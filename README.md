@@ -16,7 +16,12 @@ make kernel   # build the kernel and its own disk
 make runk     # boot the kernel, with a window
 make serialk  # boot the kernel, serial log only
 
-make check    # boot both disks, and both controls, and assert the log
+make linux-fetch  # fetch a pinned Alpine kernel and initramfs, hash-checked
+make runl     # boot Linux on asmfw, with a window
+make seriall  # boot Linux, serial log only
+make ovmfl    # the same kernel under OVMF, as a control
+
+make check    # boot every disk, and every control, and assert the log
 ```
 
 ## What it does
@@ -140,6 +145,55 @@ docs/
   verify.py             checks every line number in both trees
   vi/                   tài liệu tiếng Việt — the same system, explained
 ```
+
+## It boots Linux
+
+An Alpine Linux 6.18 kernel, unmodified, booted as `\EFI\BOOT\BOOTX64.EFI`
+through its own EFI stub, all the way to userspace:
+
+```
+[BDS] command line: console=ttyS0 initrd=\INITRD
+[    0.000000] Linux version 6.18.58-0-virt ...
+[    0.000000] efi: EFI v2.7 by asmfw
+[    0.000000] efi: ACPI 2.0=0x1110000 ACPI=0x1110000 SMBIOS=0x1132000 INITRD=...
+[    0.000000] DMI: QEMU Standard PC (i440FX + PIIX, 1996), BIOS
+[    0.190500] efi: Unable to switch EFI into virtual mode (status=8000000000000003)!
+[    3.862673] Run /init as init process
+Alpine Init 3.14.1-r0
+...
+Launching initramfs emergency recovery shell.
+~ #
+```
+
+The shell is the finish line: the initramfs has no root filesystem to find,
+which is the point — everything up to it is the firmware's work being used by
+a client nobody here wrote. `make check` boots it whenever `make linux-fetch`
+has been run, and boots the same kernel, initrd and command line under OVMF as
+the control.
+
+Getting here found four real bugs, none of which the payload could see,
+because the payload was written by the same hands as the firmware:
+
+- **SSE was never enabled.** The UEFI spec requires it of x64 firmware, and
+  every compiler targeting UEFI emits SSE instructions. Before the fix, no
+  image written in C could have run here at all.
+- **The runtime services ran from the flash.** Linux calls
+  `SetVirtualAddressMap` through the runtime services table first thing, and
+  maps memory-mapped I/O — the flash — no-execute, so that call was an
+  instruction fetch from an NX page and a kernel oops. The firmware volume is
+  now copied into `EfiRuntimeServicesCode` at boot and the table points into
+  the copy.
+- **`LocateDevicePath` said `EFI_UNSUPPORTED`.** The stub asks it for an initrd
+  provider and goes on to the command line's `initrd=` only on
+  `EFI_NOT_FOUND`; anything else, it gives up.
+- **The memory map described the runtime tables as boot services data**, which
+  an OS is entitled to reuse.
+
+The command line comes from `\EFI\BOOT\CMDLINE`, a file beside the image: a
+real boot manager takes load options from a `Boot####` variable, and with no
+persistent variables there is none. `SetVirtualAddressMap` is still
+unsupported, and Linux responds as it is meant to — it switches the runtime
+services off and boots on without them.
 
 ## The payload is the test
 
@@ -289,7 +343,13 @@ applied to something considerably easier to get subtly wrong.
   back into `fw_cfg`, which only matters to features this firmware does not
   expose.
 - **No `SetVirtualAddressMap`.** Runtime services stay valid only at their
-  physical addresses.
+  physical addresses, which is why Linux turns them off: it will only call
+  runtime services that have agreed to move.
+- **The runtime copy costs 1 MiB.** The whole firmware volume is copied into
+  runtime services code so that its layout, and every relative reference in
+  it, is unchanged. Only a few kilobytes of it are runtime code.
+- **Load options come from a file.** `\EFI\BOOT\CMDLINE`, ASCII, first line
+  only, because there is no `Boot####` variable to carry them.
 - **FAT32 short names only.** Long-name entries are skipped, not decoded.
 - **`LoadImage` takes a buffer, not a device path.** With no `SourceBuffer`
   it returns `EFI_NOT_FOUND`: resolving a device path to a file is not done.

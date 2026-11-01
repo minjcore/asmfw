@@ -1,5 +1,5 @@
 # mem.asm
-[`src/mem.asm`](../../../../src/mem.asm) — 258 dòng, 3 entry point.
+[`src/mem.asm`](../../../../src/mem.asm) — 253 dòng, 3 entry point.
 
 The page allocator behind AllocatePages, and the memory map.
 
@@ -25,6 +25,7 @@ Bị gọi bởi:
 - [efi_bs.asm](efi_bs.md) — `mem_alloc_pages`, `mem_alloc_pool`, `mem_build_map`
 - [efi_file.asm](efi_file.md) — `mem_alloc_pool`
 - [efi_proto.asm](efi_proto.md) — `mem_alloc_pool`
+- [efi_tables.asm](efi_tables.md) — `mem_alloc_pages`
 - [efi_var.asm](efi_var.md) — `mem_alloc_pages`
 - [init64.asm](init64.md) — `mem_alloc_pages`
 - [pe.asm](pe.md) — `mem_alloc_pages`

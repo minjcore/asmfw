@@ -1,5 +1,5 @@
 # init64.asm
-[`src/init64.asm`](../../../src/init64.asm) — 477 lines, 17 entry points.
+[`src/init64.asm`](../../../src/init64.asm) — 592 lines, 18 entry points.
 
 The firmware's phase sequence once long mode is live.
 
@@ -15,23 +15,24 @@ SEC  establish a C-like environment: stack, zeroed globals, serial PEI  size RAM
 | `cmos_read` | [158](../../../src/init64.asm#L158) | AL = register index, returns AL. NMI stays masked for the duration of the access, which is what every other CMOS user expects. |
 | `dxe_main` | [171](../../../src/init64.asm#L171) | — |
 | `bds_main` | [240](../../../src/init64.asm#L240) | — |
-| `image_exit_resume` | [361](../../../src/init64.asm#L361) | — |
-| `bds_err_no_media` | [373](../../../src/init64.asm#L373) | — |
-| `bds_err_no_esp` | [375](../../../src/init64.asm#L375) | — |
-| `bds_err_no_fs` | [377](../../../src/init64.asm#L377) | — |
-| `bds_err_no_file` | [379](../../../src/init64.asm#L379) | — |
-| `bds_err_no_mem` | [381](../../../src/init64.asm#L381) | — |
-| `bds_err_read_error` | [383](../../../src/init64.asm#L383) | — |
-| `bds_err_pe_error` | [385](../../../src/init64.asm#L385) | — |
-| `bds_failed` | [391](../../../src/init64.asm#L391) | — |
-| `bds_done` | [393](../../../src/init64.asm#L393) | — |
-| `bds_publish_image` | [406](../../../src/init64.asm#L406) | fill in EFI_LOADED_IMAGE_PROTOCOL and register it |
+| `image_exit_resume` | [363](../../../src/init64.asm#L363) | — |
+| `bds_err_no_media` | [375](../../../src/init64.asm#L375) | — |
+| `bds_err_no_esp` | [377](../../../src/init64.asm#L377) | — |
+| `bds_err_no_fs` | [379](../../../src/init64.asm#L379) | — |
+| `bds_err_no_file` | [381](../../../src/init64.asm#L381) | — |
+| `bds_err_no_mem` | [383](../../../src/init64.asm#L383) | — |
+| `bds_err_read_error` | [385](../../../src/init64.asm#L385) | — |
+| `bds_err_pe_error` | [387](../../../src/init64.asm#L387) | — |
+| `bds_failed` | [393](../../../src/init64.asm#L393) | — |
+| `bds_done` | [395](../../../src/init64.asm#L395) | — |
+| `bds_publish_image` | [408](../../../src/init64.asm#L408) | fill in EFI_LOADED_IMAGE_PROTOCOL and register it |
+| `bds_load_cmdline` | [454](../../../src/init64.asm#L454) | if \EFI\BOOT\CMDLINE exists, read it and keep it as CHAR16 in g_cmdline, for the image's LoadOptions. A real boot manager takes load options from a Boot#### variable; with no persistent variables here, a file beside the image plays that part. It is ASCII, and stops at the first line break, so an editor's trailing newline does not end up on a kernel command line. |
 
 ## Definitions
 
-Constants: 1.
+Constants: 2.
 
-Data and state: `name_efi`, `name_boot`, `name_bootx64`
+Data and state: `name_efi`, `name_boot`, `name_bootx64`, `name_cmdline`
 
 ## Dependencies
 

@@ -1,5 +1,5 @@
 # efi.inc
-[`src/efi.inc`](../../../src/efi.inc) — 349 lines, 0 entry points.
+[`src/efi.inc`](../../../src/efi.inc) — 350 lines, 0 entry points.
 
 The UEFI ABI as this firmware implements it.
 
@@ -7,7 +7,7 @@ Structure offsets are written out as constants rather than built with a struct m
 
 ## Definitions
 
-Constants: 250.
+Constants: 251.
 
 ---
 

@@ -1,5 +1,5 @@
 # const.inc
-[`src/const.inc`](../../../../src/const.inc) — 143 dòng, 0 entry point.
+[`src/const.inc`](../../../../src/const.inc) — 147 dòng, 0 entry point.
 
 Build-wide constants and the firmware's physical memory map.
 

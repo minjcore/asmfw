@@ -138,6 +138,10 @@ GVAR g_bs_exited,     4     ; set once ExitBootServices has been called
 GVAR g_var_store,     8     ; the variable records, runtime services data
 GVAR g_exit_rsp,      8     ; stack to unwind to when the image calls Exit
 GVAR g_current_image, 8     ; the handle of the image running now
+GVAR g_rt_shadow,     8     ; the flash volume's copy in runtime code, or 0
+GVAR g_boot_dir,      4     ; first cluster of \EFI\BOOT
+GVAR g_cmdline,       8     ; the image's load options, CHAR16, or 0
+GVAR g_cmdline_size,  4     ; their size in bytes, NUL included
 GVAR g_exit_status,   8     ; the status it exited with
 
 GOFF_TOTAL equ GOFF

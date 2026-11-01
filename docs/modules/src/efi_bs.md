@@ -1,5 +1,5 @@
 # efi_bs.asm
-[`src/efi_bs.asm`](../../../src/efi_bs.asm) — 882 lines, 29 entry points.
+[`src/efi_bs.asm`](../../../src/efi_bs.asm) — 902 lines, 30 entry points.
 
 Boot services.
 
@@ -38,6 +38,7 @@ What is implemented is what a boot loader actually calls. The rest return EFI_UN
 | `bs_calculate_crc32` | [821](../../../src/efi_bs.asm#L821) | — |
 | `bs_copy_mem` | [848](../../../src/efi_bs.asm#L848) | — |
 | `bs_set_mem` | [875](../../../src/efi_bs.asm#L875) | — |
+| `bs_locate_device_path` | [893](../../../src/efi_bs.asm#L893) | LocateDevicePath(Protocol, DevicePath, Device). No handle here carries a device path protocol, so no device path can be matched to one, and EFI_NOT_FOUND is the true answer for every query. It matters that it is that and not EFI_UNSUPPORTED: Linux's EFI stub asks this for an initrd provider, and goes on to the command line's initrd= only when told there is none — any other failure, it gives up. |
 
 ## Definitions
 

@@ -38,6 +38,7 @@ efi_init:
     mov     rdi, EFI_RT
     mov     ecx, RT_SIZE
     call    mem_copy
+    call    rt_shadow
 
     lea     rsi, [rel conout_template]
     mov     rdi, EFI_CONOUT
@@ -377,7 +378,7 @@ bs_template:
     dq  0                                       ; reserved by the spec
     dq  bs_unsupported                          ; RegisterProtocolNotify
     dq  bs_locate_handle
-    dq  bs_unsupported                          ; LocateDevicePath
+    dq  bs_locate_device_path
     dq  bs_install_configuration_table
     dq  bs_load_image
     dq  bs_start_image
@@ -484,3 +485,55 @@ align 2
 vendor_string:
     dw __utf16le__("asmfw"), 0
 vendor_string_end:
+
+; ----------------------------------------------------------------------------
+; rt_shadow -- copy the flash volume into runtime services code, and point the
+; runtime services table at the copy.
+;
+; The runtime services have to keep working after ExitBootServices, from
+; wherever the OS can execute them. An OS maps EfiRuntimeServicesCode
+; executable and maps memory-mapped I/O -- which is what the flash is -- as
+; data only; Linux calls SetVirtualAddressMap through this table before
+; anything else, so a pointer into the flash is an instruction fetch from a
+; no-execute page, and the kernel dies there.
+;
+; The whole volume is copied, at the same layout, so every relative call and
+; RIP-relative reference inside it still lands where it should. The runtime
+; functions use nothing else: their state is in RAM globals, at absolute
+; addresses that do not move.
+; ----------------------------------------------------------------------------
+rt_shadow:
+    push    rax
+    push    rcx
+    push    rdx
+    push    rsi
+    push    rdi
+    mov     ecx, FV_SIZE >> 12
+    mov     edx, EfiRuntimeServicesCode
+    call    mem_alloc_pages
+    test    rax, rax
+    jz      .done                               ; the flash copies stay
+    mov     [abs g_rt_shadow], rax
+    mov     rdi, rax
+    mov     rsi, FV_BASE
+    mov     ecx, FV_SIZE / 8
+    rep     movsq
+    ; Every entry after the header is a function in the volume: rebase it.
+    mov     rdi, EFI_RT + HDR_SIZE
+    mov     ecx, (RT_SIZE - HDR_SIZE) / 8
+    mov     rsi, FV_BASE                        ; too wide for an immediate operand
+    sub     rax, rsi                            ; RAX = how far the copy moved it
+.entry:
+    mov     rdx, [rdi]
+    add     rdx, rax
+    mov     [rdi], rdx
+    add     rdi, 8
+    dec     ecx
+    jnz     .entry
+.done:
+    pop     rdi
+    pop     rsi
+    pop     rdx
+    pop     rcx
+    pop     rax
+    ret

@@ -37,6 +37,7 @@ TH_SIZE                 equ 0x18
 SIG_SYSTEM_TABLE        equ 0x5453595320494249       ; "IBI SYST"
 SIG_BOOT_SERVICES       equ 0x56524553544F4F42       ; "BOOTSERV"
 SIG_RUNTIME_SERVICES    equ 0x56524553544E5552       ; "RUNTSERV"
+HDR_SIZE                equ 0x18                     ; EFI_TABLE_HEADER
 
 EFI_2_70_REVISION       equ (2 << 16) | 70
 EFI_SPEC_REVISION       equ EFI_2_70_REVISION

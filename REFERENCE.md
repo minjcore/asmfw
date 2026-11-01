@@ -358,12 +358,25 @@ Microsoft x64 ABI, `XMM6`–`XMM15` included, since an image leaving through
 `Exit` with any other handle is `EFI_INVALID_PARAMETER`, unless that image was
 loaded and never started, which `Exit` unloads.
 
+`LocateDevicePath` returns `EFI_NOT_FOUND` for every query, which is true —
+no handle carries a device path protocol — and is the answer Linux's EFI stub
+needs before it will fall back to `initrd=` on the command line.
+
 `SignalEvent` and `CloseEvent` sit at `0x68` and `0x70`, in the specification's
 order. They were the other way round until `LoadImage` work found it: a
 `CloseEvent` call landed on `bs_unsupported`, and a `SignalEvent` call closed
 the event.
 
 ### 4.3 Runtime services
+
+The runtime services run from a copy: `rt_shadow`, called from `efi_init`,
+copies the whole firmware volume into `EfiRuntimeServicesCode` (`g_rt_shadow`)
+and rebases every entry of the runtime services table into it. The copy keeps
+the volume's layout, so relative calls and RIP-relative references inside it
+still land; the runtime functions use no other kind, and keep their state in
+RAM globals. Running from the flash itself would not do: an OS maps
+memory-mapped I/O no-execute, and Linux's first runtime call
+(`SetVirtualAddressMap`) faulted on exactly that.
 
 `GetTime` (off the RTC, via `rtc_decode`) and `ResetSystem` are real. The
 variable services are in `efi_var.asm`: 32 fixed records of 2 KiB in runtime
@@ -411,8 +424,8 @@ table) as `EfiRuntimeServicesData` with `EFI_MEMORY_RUNTIME`, the stack and the
 rest of `FW_TABLES` as `EfiBootServicesData`; then one descriptor per
 allocation record, with the type the caller asked for and `EFI_MEMORY_RUNTIME`
 on the runtime types; then the unallocated tail as `EfiConventionalMemory`;
-then the flash as `EfiMemoryMappedIO`, uncached, with `EFI_MEMORY_RUNTIME`,
-because the runtime services' code executes from it in place. Recording the requested type matters: an OS may
+the flash is not described, since nothing runs from it once the runtime
+services have their copy in RAM. Recording the requested type matters: an OS may
 reuse `EfiBootServicesData` after `ExitBootServices`, so an image handed back
 under the wrong type would be freed out from under itself.
 

@@ -22,7 +22,7 @@ duplicated here. They answer different questions:
 | [modules/](modules/README.md) | one file per source file — 44 of them, mirroring the source tree |
 | [vi/modules/](vi/modules/README.md) | the same 44, with Vietnamese labels |
 | [generate.py](generate.py) | regenerates both trees above from the sources |
-| [verify.py](verify.py) | checks all 876 claims in both trees against the sources |
+| [verify.py](verify.py) | checks all 882 claims in both trees against the sources |
 | [vi/](vi/README.md) | tài liệu tiếng Việt — the same system, explained rather than tabulated |
 
 Each module file carries the source file's own banner comment, a table of entry

@@ -1027,7 +1027,7 @@ show_memmap:
             call    is_runtime_data
             jne     .wrong
 
-            ; GetTime's code: runtime code in RAM, or flash mapped for runtime.
+            ; GetTime's code.
             lea     rdx, [rel s_mm_code]
             mov     rax, [rbp + RT_GETTIME]
             call    find_desc
@@ -1035,12 +1035,10 @@ show_memmap:
             jz      .wrong
             bt      qword [rax + MD_ATTR], MD_RUNTIME_BIT
             jnc     .wrong
-            mov     ecx, [rax + MD_TYPE]
-            cmp     ecx, EfiRuntimeServicesCode
-            je      .right
-            cmp     ecx, EfiMemoryMappedIO
+            ; Runtime services code, and nothing else: an OS maps that
+            ; executable, and maps memory-mapped I/O -- a flash, say -- as data.
+            cmp     dword [rax + MD_TYPE], EfiRuntimeServicesCode
             jne     .wrong
-.right:
             lea     rdx, [rel s_mm_ok]
             call    out_w
             mov     rax, [rel g_mmsize]

@@ -880,3 +880,23 @@ bs_set_mem:
     rep stosb
     pop     rdi
     ret
+
+; ----------------------------------------------------------------------------
+; bs_locate_device_path -- LocateDevicePath(Protocol, DevicePath, Device).
+;
+; No handle here carries a device path protocol, so no device path can be
+; matched to one, and EFI_NOT_FOUND is the true answer for every query. It
+; matters that it is that and not EFI_UNSUPPORTED: Linux's EFI stub asks this
+; for an initrd provider, and goes on to the command line's initrd= only when
+; told there is none -- any other failure, it gives up.
+; ----------------------------------------------------------------------------
+bs_locate_device_path:
+    test    rcx, rcx
+    jz      .bad
+    test    rdx, rdx
+    jz      .bad
+    mov     rax, EFI_NOT_FOUND
+    ret
+.bad:
+    mov     rax, EFI_INVALID_PARAMETER
+    ret

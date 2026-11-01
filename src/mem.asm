@@ -218,14 +218,9 @@ mem_build_map:
     call    .emit
 
 .flash:
-    ; --- the flash, last because it is highest -----------------------------
-    ; The runtime services' code executes from here, in place, so it is
-    ; memory-mapped I/O that an OS has to map for runtime calls.
-    mov     rax, FV_BASE
-    mov     rcx, FV_SIZE >> 12
-    mov     edx, EfiMemoryMappedIO
-    mov     r8, EFI_MEMORY_UC | EFI_MEMORY_RUNTIME
-    call    .emit
+    ; The flash is not described: nothing executes from it once the runtime
+    ; services run from their copy in RAM (rt_shadow), and an OS has no use
+    ; for a description of memory-mapped I/O it will never touch.
 
 .done:
     mov     eax, r9d

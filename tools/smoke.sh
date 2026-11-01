@@ -187,11 +187,58 @@ check_ovmf() {
     want "$log" "kernel   nothing left to run; halted"
 }
 
+# ---------------------------------------------------------------------------
+# Linux: a client nobody here wrote, and so one that cannot have been written
+# to match this firmware's mistakes. The landmarks run from the EFI stub's
+# view of the firmware, through the kernel's, to userspace: Alpine's init,
+# finding nothing to boot, drops to its recovery shell. Under OVMF the same
+# kernel, initrd and command line must reach the same shell.
+# ---------------------------------------------------------------------------
+L_SECONDS=${L_SECONDS:-60}
+
+check_linux() {
+    if [ ! -f "$BUILD/linux.img" ]; then
+        echo "== linux                skipped: no kernel (make linux-fetch)"
+        return
+    fi
+    log=$LOGS/linux.log
+    echo "== linux                ($log)"
+    ( $TIMEOUT -s TERM "$L_SECONDS" $QEMU -machine pc -m 512 -bios "$FW" \
+        -drive file="$BUILD/linux.img",format=raw,if=ide -no-reboot \
+        -display none -serial stdio > "$log" 2>&1 || true ) 2>/dev/null
+
+    want "$log" "[BDS] command line: console=ttyS0 initrd=\\INITRD"
+    want "$log" "efi: EFI v2.7 by asmfw"
+    want "$log" "SMBIOS 2.8 present."
+    want "$log" "efi: Unable to switch EFI into virtual mode"   # and goes on
+    want "$log" "Run /init as init process"
+    want "$log" "Alpine Init"
+    want "$log" "Launching initramfs emergency recovery shell."
+    deny "$log" "Kernel panic"
+
+    if [ ! -f "$OVMF_CODE" ] || [ ! -f "$OVMF_VARS" ]; then
+        echo "== control: linux       skipped: no OVMF at $OVMF_CODE"
+        return
+    fi
+    log=$LOGS/ovmfl.log
+    echo "== control: linux under OVMF     ($log)"
+    cp "$OVMF_VARS" "$BUILD/smoke-vars.fd"
+    ( $TIMEOUT -s TERM "$L_SECONDS" $QEMU -machine pc -m 512 -no-reboot \
+        -drive if=pflash,format=raw,unit=0,readonly=on,file="$OVMF_CODE" \
+        -drive if=pflash,format=raw,unit=1,file="$BUILD/smoke-vars.fd" \
+        -kernel "$BUILD/linux/vmlinuz-virt" -initrd "$BUILD/linux/initramfs-virt" \
+        -append console=ttyS0 -display none -serial stdio > "$log" 2>&1 || true ) 2>/dev/null
+    want "$log" "Run /init as init process"
+    want "$log" "Launching initramfs emergency recovery shell."
+    deny "$log" "Kernel panic"
+}
+
 case "${1:-all}" in
     fw)     check_fw ;;
     kernel) check_kernel ;;
-    all)    check_fw; check_kernel; check_ovmf ;;
-    *)      echo "usage: smoke.sh [all|fw|kernel]"; exit 1 ;;
+    linux)  check_linux ;;
+    all)    check_fw; check_kernel; check_ovmf; check_linux ;;
+    *)      echo "usage: smoke.sh [all|fw|kernel|linux]"; exit 1 ;;
 esac
 
 echo

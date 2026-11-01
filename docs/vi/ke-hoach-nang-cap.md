@@ -198,7 +198,32 @@ theo tỉ lệ đo được, không phải theo cảm nhận.
 
 ## Tầng 3 — Mốc lớn
 
-### 3.1 Boot một kernel Linux thật ⭐ khuyến nghị
+### 3.1 Boot một kernel Linux thật — ✅ đã xong (2026-11-01)
+
+**Kết quả:** Alpine Linux 6.18.58 (kernel nguyên bản, `vmlinuz-virt`) boot qua
+EFI stub của chính nó, tới tận userspace — init của Alpine chạy, không tìm thấy
+gì để boot, rơi vào emergency shell `~ #`. Dưới OVMF, cùng kernel, initrd và
+command line cho đúng kết quả đó. `make linux-fetch` tải cặp file đã ghim theo
+URL và sha256; `make check` boot cả hai khi file có mặt (79 assertion).
+
+**Bốn lỗi thật tìm ra trên đường đi** — không lỗi nào payload thấy được, vì
+payload do cùng một người viết với firmware:
+1. **SSE chưa từng được bật** (đã sửa ở 1.3, nhưng chính Linux là lý do nó quan
+   trọng).
+2. **Runtime services chạy từ flash.** Linux gọi `SetVirtualAddressMap` qua bảng
+   RT ngay đầu tiên, và map MMIO (chính là flash) với NX → oops. Giờ cả firmware
+   volume được chép vào `EfiRuntimeServicesCode` lúc boot (`rt_shadow`) và bảng
+   RT trỏ vào bản chép; payload giờ đòi code runtime phải là loại đó, và OVMF
+   cũng đạt.
+3. **`LocateDevicePath` trả `EFI_UNSUPPORTED`.** Stub hỏi nó tìm initrd qua
+   LoadFile2 và chỉ chuyển sang `initrd=` khi nhận `EFI_NOT_FOUND`.
+4. **Memory map báo bảng runtime là boot services data** (đã sửa trước đó).
+
+**Còn lại:** `SetVirtualAddressMap` vẫn `EFI_UNSUPPORTED`, nên Linux tắt runtime
+services (đúng hành vi được thiết kế — nó boot tiếp). Load options lấy từ file
+`\EFI\BOOT\CMDLINE` vì không có biến `Boot####` bền.
+
+#### Kế hoạch ban đầu
 
 Đây là **bài test tối hậu** cho firmware, và nó đúng với triết lý của dự án hơn
 mọi việc khác trong danh sách này: payload là control do chính ta viết, còn Linux

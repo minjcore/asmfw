@@ -116,10 +116,16 @@ def main():
 
     # .efi is what firmware looks for; .bin is what the kernel loads once it
     # has stopped asking the firmware for anything.
-    dest = {'.efi': '::/EFI/BOOT/', '.bin': '::/PROGS/'}
+    # CMDLINE sits beside the image it is the command line for; anything else
+    # without an extension -- an initrd, say -- goes in the root, where a path
+    # like \INITRD on that command line finds it.
+    dest = {'.efi': '::/EFI/BOOT/', '.bin': '::/PROGS/', '': '::/'}
     copied = 0
     for name in sorted(os.listdir(payload_dir)):
-        where = dest.get(os.path.splitext(name)[1].lower())
+        if name == 'CMDLINE':
+            where = '::/EFI/BOOT/'
+        else:
+            where = dest.get(os.path.splitext(name)[1].lower())
         if where is None:
             continue
         run(['mcopy', '-i', at, os.path.join(payload_dir, name), where + name])

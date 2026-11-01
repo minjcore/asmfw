@@ -23,6 +23,15 @@ PROGBIN := $(addprefix $(KSTAGE)/,$(PROGS))
 
 FW_SRCS := $(wildcard src/*.asm) $(wildcard src/*.inc)
 
+# Linux, booted as \EFI\BOOT\BOOTX64.EFI from a disk of its own. The kernel
+# and initramfs are fetched, not committed: tools/getlinux.sh pins them.
+LDIR    := $(BUILD)/linux
+LSTAGE  := $(LDIR)/stage
+LESP    := $(BUILD)/linux.img
+LKERNEL := $(LDIR)/vmlinuz-virt
+LINITRD := $(LDIR)/initramfs-virt
+LCMDLINE := console=ttyS0 initrd=\INITRD
+
 # Warnings are on, minus the three that fire on every absolute reference in a
 # flat binary assembled at its final address -- which is to say, on everything.
 NASMFLAGS := -f bin -I src/ -w+all \
@@ -37,7 +46,8 @@ QEMUFLAGS := -machine pc \
              -no-reboot
 
 .PHONY: all run serial screenshot ovmf esp kernel runk serialk ovmfk \
-        check check-fw check-kernel check-docs lstk clean
+        check check-fw check-kernel check-docs lstk clean \
+        linux-fetch linux runl seriall ovmfl check-linux
 
 all: $(FW) $(ESP)
 
@@ -120,6 +130,45 @@ $(BUILD) $(STAGE) $(KSTAGE):
 	@mkdir -p $@
 
 # ---------------------------------------------------------------------------
+# Linux
+# ---------------------------------------------------------------------------
+linux-fetch:
+	@tools/getlinux.sh $(LDIR)
+
+linux: $(LESP)
+
+# The command line goes in a file beside the image: with no persistent
+# variables there is no Boot#### entry to carry load options, so BDS reads
+# \EFI\BOOT\CMDLINE instead.
+$(LESP): $(LKERNEL) $(LINITRD) tools/mkesp.py | $(BUILD)
+	@mkdir -p $(LSTAGE)
+	cp $(LKERNEL) $(LSTAGE)/BOOTX64.EFI
+	cp $(LINITRD) $(LSTAGE)/INITRD
+	printf '%s\n' '$(LCMDLINE)' > $(LSTAGE)/CMDLINE
+	$(PYTHON) tools/mkesp.py $@ $(LSTAGE) 128
+
+$(LKERNEL) $(LINITRD):
+	@echo "no Linux to boot: run 'make linux-fetch' first"; exit 1
+
+runl: $(FW) $(LESP)
+	$(QEMU) -machine pc -m 512 -bios $(FW) \
+	  -drive file=$(LESP),format=raw,if=ide -no-reboot -serial mon:stdio
+
+seriall: $(FW) $(LESP)
+	$(QEMU) -machine pc -m 512 -bios $(FW) \
+	  -drive file=$(LESP),format=raw,if=ide -no-reboot -display none -serial stdio
+
+# The same kernel, initrd and command line under OVMF, which takes them from
+# QEMU directly and starts the kernel through the same EFI stub.
+ovmfl: $(LKERNEL) $(LINITRD)
+	@cp $(OVMF_VARS) $(BUILD)/lvars.fd
+	$(QEMU) -machine pc -m 512 -no-reboot \
+	  -drive if=pflash,format=raw,unit=0,readonly=on,file=$(OVMF_CODE) \
+	  -drive if=pflash,format=raw,unit=1,file=$(BUILD)/lvars.fd \
+	  -kernel $(LKERNEL) -initrd $(LINITRD) -append 'console=ttyS0' \
+	  -display none -serial stdio
+
+# ---------------------------------------------------------------------------
 # Running it
 # ---------------------------------------------------------------------------
 
@@ -184,7 +233,7 @@ clean:
 # runs the same disks under OVMF, which is the only comparison that can tell a
 # firmware bug from a payload bug.
 # ---------------------------------------------------------------------------
-check: check-docs $(FW) $(ESP) $(KESP)
+check: check-docs $(FW) $(ESP) $(KESP) $(if $(wildcard $(LKERNEL)),$(LESP))
 	@OVMF_CODE="$(OVMF_CODE)" OVMF_VARS="$(OVMF_VARS)" BUILD="$(BUILD)" \
 	 QEMU="$(QEMU)" tools/smoke.sh all
 
@@ -198,3 +247,7 @@ check-fw: $(FW) $(ESP)
 
 check-kernel: $(FW) $(KESP)
 	@BUILD="$(BUILD)" QEMU="$(QEMU)" tools/smoke.sh kernel
+
+check-linux: $(FW) $(LESP)
+	@OVMF_CODE="$(OVMF_CODE)" OVMF_VARS="$(OVMF_VARS)" BUILD="$(BUILD)" \
+	 QEMU="$(QEMU)" tools/smoke.sh linux

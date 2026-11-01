@@ -286,6 +286,7 @@ bds_main:
     jz       bds_err_no_file
     test    cl, ATTR_DIRECTORY
     jz       bds_err_no_file
+    mov     [abs g_boot_dir], eax
 
     lea     rsi, [rel name_bootx64]
     call    fat_lookup
@@ -342,6 +343,7 @@ bds_main:
     mov     al, 10
     call    con_putc
 
+    call    bds_load_cmdline
     call    bds_publish_image
 
     ; --- start it ---------------------------------------------------------
@@ -415,8 +417,10 @@ bds_publish_image:
     mov     qword [rdi + LI_DEVICEHANDLE], H_DISK
     mov     qword [rdi + LI_FILEPATH], 0
     mov     qword [rdi + LI_RESERVED], 0
-    mov     dword [rdi + LI_LOADOPTIONSSIZE], 0
-    mov     qword [rdi + LI_LOADOPTIONS], 0
+    mov     eax, [abs g_cmdline_size]
+    mov     [rdi + LI_LOADOPTIONSSIZE], eax
+    mov     rax, [abs g_cmdline]
+    mov     [rdi + LI_LOADOPTIONS], rax
     mov     rax, [abs g_img_base]
     mov     [rdi + LI_IMAGEBASE], rax
     mov     rax, [abs g_img_pages]
@@ -437,11 +441,122 @@ bds_publish_image:
     ret
 
 ; ----------------------------------------------------------------------------
+; bds_load_cmdline -- if \EFI\BOOT\CMDLINE exists, read it and keep it as
+; CHAR16 in g_cmdline, for the image's LoadOptions.
+;
+; A real boot manager takes load options from a Boot#### variable; with no
+; persistent variables here, a file beside the image plays that part. It is
+; ASCII, and stops at the first line break, so an editor's trailing newline
+; does not end up on a kernel command line.
+; ----------------------------------------------------------------------------
+CMDLINE_MAX     equ 4096
+
+bds_load_cmdline:
+    push    rax
+    push    rbx
+    push    rcx
+    push    rdx
+    push    rsi
+    push    rdi
+    push    r12
+
+    mov     qword [abs g_cmdline], 0
+    mov     dword [abs g_cmdline_size], 0
+
+    mov     eax, [abs g_boot_dir]
+    lea     rsi, [rel name_cmdline]
+    call    fat_lookup
+    test    eax, eax
+    jz      .done
+    test    cl, ATTR_DIRECTORY
+    jnz     .done
+    test    rdx, rdx
+    jz      .done
+    cmp     rdx, CMDLINE_MAX
+    ja      .done
+    mov     r12, rdx                            ; its length
+
+    ; Bytes first, read in whole clusters; then the CHAR16 copy after them.
+    mov     ebx, eax
+    mov     eax, [abs g_fat_spc]
+    shl     eax, 9
+    lea     rcx, [rax + CMDLINE_MAX * 3 + 2 + 0xFFF]
+    shr     rcx, 12
+    mov     edx, EfiLoaderData
+    call    mem_alloc_pages
+    test    rax, rax
+    jz      .done
+    mov     rdi, rax
+    mov     eax, ebx
+    mov     rdx, r12
+    call    fat_read_file
+    test    eax, eax
+    jnz     .done
+
+    mov     rsi, rdi                            ; the bytes
+    mov     eax, [abs g_fat_spc]
+    shl     eax, 9
+    lea     rbx, [rdi + rax + CMDLINE_MAX]      ; past them, room for CHAR16
+    xor     ecx, ecx
+.widen:
+    cmp     rcx, r12
+    jae     .end
+    movzx   eax, byte [rsi + rcx]
+    cmp     al, 13
+    je      .end
+    cmp     al, 10
+    je      .end
+    mov     [rbx + rcx*2], ax
+    inc     rcx
+    jmp     .widen
+.end:
+    ; Trailing blanks go too.
+    test    rcx, rcx
+    jz      .terminate
+    cmp     word [rbx + rcx*2 - 2], ' '
+    jne     .terminate
+    dec     rcx
+    jmp     .end
+.terminate:
+    mov     word [rbx + rcx*2], 0
+    test    rcx, rcx
+    jz      .done
+    mov     [abs g_cmdline], rbx
+    lea     eax, [rcx*2 + 2]
+    mov     [abs g_cmdline_size], eax
+
+    mov     rdi, rsi                            ; puts takes RSI
+    puts    msg_cmdline
+    ; Echo it back as ASCII: every character came from a byte.
+    xor     edx, edx
+.echo:
+    cmp     rdx, rcx
+    jae     .echoed
+    mov     al, [rdi + rdx]
+    call    con_putc
+    inc     rdx
+    jmp     .echo
+.echoed:
+    mov     al, 10
+    call    con_putc
+.done:
+    pop     r12
+    pop     rdi
+    pop     rsi
+    pop     rdx
+    pop     rcx
+    pop     rbx
+    pop     rax
+    ret
+
+; ----------------------------------------------------------------------------
 ; 8.3 names, space padded, exactly as FAT stores them
 ; ----------------------------------------------------------------------------
 name_efi:       db "EFI        "
 name_boot:      db "BOOT       "
 name_bootx64:   db "BOOTX64 EFI"
+name_cmdline:   db "CMDLINE    "
+CSTR msg_cmdline, "[BDS] command line: "
 
 ; ----------------------------------------------------------------------------
 CSTR msg_banner,  10, "asmfw 0.1 -- UEFI firmware, written in assembly", 10, \

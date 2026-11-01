@@ -136,6 +136,7 @@ Phần này quan trọng, vì nó là thứ làm cho những phần còn lại �
 - **FAT32 chỉ đọc, chỉ tên ngắn 8.3.**
 - **`LoadImage` chỉ nạp từ buffer**, không từ device path; tối đa 8 image mỗi lần boot.
 - **Một ổ ATA duy nhất**, primary master, PIO, LBA28.
+- **Boot được Linux thật** (Alpine 6.18) tới userspace; runtime services bị Linux tắt vì không có `SetVirtualAddressMap`.
 - **Biến UEFI nằm trong RAM** — 32 ô, mất khi reset; không có ghi có xác thực.
 - **Không Secure Boot**, không setup UI.
 - Phía kernel: round robin không ưu tiên, console chỉ text, một keystroke được

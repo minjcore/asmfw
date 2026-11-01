@@ -1,5 +1,5 @@
 # efi.inc
-[`src/efi.inc`](../../../../src/efi.inc) — 349 dòng, 0 entry point.
+[`src/efi.inc`](../../../../src/efi.inc) — 350 dòng, 0 entry point.
 
 The UEFI ABI as this firmware implements it.
 
@@ -7,7 +7,7 @@ Structure offsets are written out as constants rather than built with a struct m
 
 ## Định nghĩa
 
-Hằng số: 250.
+Hằng số: 251.
 
 ---
 
