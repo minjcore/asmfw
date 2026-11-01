@@ -1,0 +1,30 @@
+# hello.asm
+[`payload/hello.asm`](../../../../payload/hello.asm) — 698 dòng, 7 entry point.
+
+A UEFI application, PE32+ headers and all, in one flat binary.
+
+This exists to test the firmware, so it is deliberately not built with a linker: the headers below are exactly what the firmware's PE loader has to understand, spelled out where they can be read.
+
+## Entry point
+
+| Tên | Dòng | Hợp đồng |
+| --- | --- | --- |
+| `efi_main` | [173](../../../../payload/hello.asm#L173) | — |
+| `draw_bar` | [357](../../../../payload/hello.asm#L357) | paint a horizontal gradient across the bottom of the screen, straight into the framebuffer the GOP handed over. |
+| `show_acpi` | [426](../../../../payload/hello.asm#L426) | find the ACPI tables through the configuration table, name each one, and check that it still checksums to zero. This is the part of the payload that tests the firmware hardest. QEMU hands firmware ACPI blobs whose cross-references are offsets, not addresses, and a script saying which ones to patch and which checksums to redo afterwards. Firmware that runs the script produces tables that sum to zero and point at each other; firmware that skips it produces tables that do neither. Walking the XSDT here reads every pointer the script was supposed to fix. |
+| `sig_to_str` | [548](../../../../payload/hello.asm#L548) | RSI = a table. Spells its four signature bytes, and a trailing space, into g_sigbuf as CHAR16. |
+| `sum_table` | [571](../../../../payload/hello.asm#L571) | RSI = a table. Returns AL = the sum of its bytes, which the specification requires to be zero. |
+| `hex_to_str` | [593](../../../../payload/hello.asm#L593) | RAX = value, RDI = where to write it as CHAR16, ECX = digits. Most significant first, over the placeholder in a message. |
+| `guid_eq` | [628](../../../../payload/hello.asm#L628) | RSI and RDI point at GUIDs. ZF set if they match. |
+
+## Định nghĩa
+
+Macro: `WSTR`
+
+Hằng số: 51.
+
+Dữ liệu và state: `pe_signature`, `opt_start`, `opt_end`, `acpi20_guid`, `gop_guid`, `sfs_guid`, `g_image`, `g_st`, `g_gop`, `g_sfs`, `g_root`, `g_file`, `g_readlen`, `g_readbuf`, `g_acpi_bad`, `g_sigbuf`, `g_key`, `s_key`, và 2 nữa
+
+---
+
+Sinh bởi `docs/generate.py`. Kiểm bởi `docs/verify.py`.

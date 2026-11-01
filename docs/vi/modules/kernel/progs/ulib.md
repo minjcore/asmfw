@@ -1,0 +1,29 @@
+# ulib.inc
+[`kernel/progs/ulib.inc`](../../../../../kernel/progs/ulib.inc) — 97 dòng, 5 entry point.
+
+The whole of userspace's library.
+
+Assembled into each program rather than shared at run time: there is no loader that could resolve a call between two images, and no second image to resolve it against.
+
+## Entry point
+
+| Tên | Dòng | Hợp đồng |
+| --- | --- | --- |
+| `u_write` | [12](../../../../../kernel/progs/ulib.inc#L12) | RDI = buffer, RSI = length. Returns RAX. |
+| `u_read` | [21](../../../../../kernel/progs/ulib.inc#L21) | RDI = buffer, RSI = length, RDX = milliseconds to wait, 0 = forever. Returns RAX = how many bytes arrived, 0 if the wait ran out. |
+| `u_exit` | [29](../../../../../kernel/progs/ulib.inc#L29) | RDI = status. Does not return. |
+| `u_hex` | [39](../../../../../kernel/progs/ulib.inc#L39) | RAX = value, RDI = where to write, ECX = how many digits. Most significant first, in place, over the placeholder in a message. |
+| `u_dec` | [75](../../../../../kernel/progs/ulib.inc#L75) | RAX = value, RDI = where to write, ECX = how many digits. Filled from the right, so the field is fixed width. |
+
+## Phụ thuộc
+
+Bị gọi bởi:
+
+- [count.asm](count.md) — `u_dec`, `u_exit`, `u_write`
+- [maze.asm](maze.md) — `u_dec`, `u_exit`, `u_hex`, `u_write`
+- [rogue.asm](rogue.md) — `u_exit`, `u_hex`, `u_write`
+- [type.asm](type.md) — `u_dec`, `u_exit`, `u_hex`, `u_read`, `u_write`
+
+---
+
+Sinh bởi `docs/generate.py`. Kiểm bởi `docs/verify.py`.

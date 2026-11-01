@@ -1,0 +1,58 @@
+# init64.asm
+[`src/init64.asm`](../../../../src/init64.asm) — 452 dòng, 17 entry point.
+
+The firmware's phase sequence once long mode is live.
+
+SEC  establish a C-like environment: stack, zeroed globals, serial PEI  size RAM and stand up the page allocator DXE  bring up the display and the storage stack, publish EFI protocols BDS  find a boot device and hand control to \EFI\BOOT\BOOTX64.EFI
+
+## Entry point
+
+| Tên | Dòng | Hợp đồng |
+| --- | --- | --- |
+| `sec_entry64` | [15](../../../../src/init64.asm#L15) | — |
+| `pei_main` | [57](../../../../src/init64.asm#L57) | — |
+| `mem_size_ram` | [91](../../../../src/init64.asm#L91) | highest usable byte below 4 GiB, from the CMOS size fields QEMU (and every PC BIOS since) publishes. |
+| `cmos_read` | [137](../../../../src/init64.asm#L137) | AL = register index, returns AL. NMI stays masked for the duration of the access, which is what every other CMOS user expects. |
+| `dxe_main` | [150](../../../../src/init64.asm#L150) | — |
+| `bds_main` | [216](../../../../src/init64.asm#L216) | — |
+| `image_exit_resume` | [336](../../../../src/init64.asm#L336) | — |
+| `bds_err_no_media` | [348](../../../../src/init64.asm#L348) | — |
+| `bds_err_no_esp` | [350](../../../../src/init64.asm#L350) | — |
+| `bds_err_no_fs` | [352](../../../../src/init64.asm#L352) | — |
+| `bds_err_no_file` | [354](../../../../src/init64.asm#L354) | — |
+| `bds_err_no_mem` | [356](../../../../src/init64.asm#L356) | — |
+| `bds_err_read_error` | [358](../../../../src/init64.asm#L358) | — |
+| `bds_err_pe_error` | [360](../../../../src/init64.asm#L360) | — |
+| `bds_failed` | [366](../../../../src/init64.asm#L366) | — |
+| `bds_done` | [368](../../../../src/init64.asm#L368) | — |
+| `bds_publish_image` | [381](../../../../src/init64.asm#L381) | fill in EFI_LOADED_IMAGE_PROTOCOL and register it |
+
+## Định nghĩa
+
+Dữ liệu và state: `name_efi`, `name_boot`, `name_bootx64`
+
+## Phụ thuộc
+
+Gọi vào:
+
+- [acpi.asm](acpi.md) — `acpi_init`
+- [ata.asm](ata.md) — `ata_init`
+- [efi_proto.asm](efi_proto.md) — `kbd_init`
+- [efi_tables.asm](efi_tables.md) — `efi_init`, `efi_publish_volume`, `proto_add`
+- [fat.asm](fat.md) — `fat_lookup`, `fat_mount`, `fat_read_file`
+- [gpt.asm](gpt.md) — `part_find_esp`
+- [mem.asm](mem.md) — `mem_alloc_pages`
+- [pci.asm](pci.md) — `pci_assign_resources`
+- [pe.asm](pe.md) — `pe_error_string`, `pe_load`
+- [serial.asm](serial.md) — `ser_init`
+- [util.asm](util.md) — `con_putc`, `con_putdec`, `con_puthex64`, `con_puts`, `panic`
+- [vbe.asm](vbe.md) — `gfx_init`
+
+Bị gọi bởi:
+
+- [efi_bs.asm](efi_bs.md) — `image_exit_resume`
+- [efi_rt.asm](efi_rt.md) — `cmos_read`
+
+---
+
+Sinh bởi `docs/generate.py`. Kiểm bởi `docs/verify.py`.

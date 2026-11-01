@@ -1,0 +1,33 @@
+# ata.asm
+[`src/ata.asm`](../../../../src/ata.asm) — 295 dòng, 5 entry point.
+
+ATA PIO on the primary channel.
+
+PIO rather than bus-master DMA: the firmware reads a few megabytes once and then hands the machine over, so the transfer rate never matters and PIO needs no descriptor tables, no DMA buffers and no interrupt plumbing.
+
+## Entry point
+
+| Tên | Dòng | Hợp đồng |
+| --- | --- | --- |
+| `ata_delay400` | [41](../../../../src/ata.asm#L41) | the mandatory settle after a drive select or a command. Reading the alternate status register four times is the conventional way to burn the required 400 ns without a calibrated timer. |
+| `ata_wait_bsy` | [60](../../../../src/ata.asm#L60) | spin until BSY clears. Returns EAX = 0 on success, 1 if the drive never answered. |
+| `ata_wait_drq` | [84](../../../../src/ata.asm#L84) | wait for the drive to be ready with data. Returns EAX = 0 on success, 1 on timeout or a device error. |
+| `ata_init` | [116](../../../../src/ata.asm#L116) | probe the primary master. Sets g_ata_present and g_ata_sectors. Returns EAX non-zero if a disk is there and readable. |
+| `ata_read` | [205](../../../../src/ata.asm#L205) | RAX = first LBA, ECX = sector count, RDI = destination. Returns EAX = 0 on success, 1 on failure. A single READ SECTORS command moves at most 256 sectors, so long reads are split into chunks. |
+
+## Định nghĩa
+
+Hằng số: 17.
+
+## Phụ thuộc
+
+Bị gọi bởi:
+
+- [efi_file.asm](efi_file.md) — `ata_read`
+- [fat.asm](fat.md) — `ata_read`
+- [gpt.asm](gpt.md) — `ata_read`
+- [init64.asm](init64.md) — `ata_init`
+
+---
+
+Sinh bởi `docs/generate.py`. Kiểm bởi `docs/verify.py`.

@@ -1,0 +1,37 @@
+# maze.asm
+[`kernel/progs/maze.asm`](../../../../../kernel/progs/maze.asm) — 462 dòng, 10 entry point.
+
+A program: generate a maze, solve it, draw it.
+
+A flat binary, loaded at the base of a task's window with nothing resolved for it, so every reference is RIP-relative. It never yields: whenever it disappears from the output for a while, the timer took it away. nasm -f bin -I ../ -I . -o MAZE.BIN maze.asm
+
+## Entry point
+
+| Tên | Dòng | Hợp đồng |
+| --- | --- | --- |
+| `_start` | [38](../../../../../kernel/progs/maze.asm#L38) | — |
+| `maze_generate` | [89](../../../../../kernel/progs/maze.asm#L89) | randomised depth-first search over the cells. Carving rather than placing: the grid starts solid, and every step knocks down the one wall between the current cell and a neighbour that has not been reached yet. Because a cell is only ever entered once, what comes out is a spanning tree — a perfect maze, with exactly one route between any two points, which is what makes the solver below able to assume it. |
+| `maze_solve` | [183](../../../../../kernel/progs/maze.asm#L183) | depth-first search, marking as it goes and unmarking as it backs out. In a perfect maze the cells still marked when the exit is reached are exactly the route to it, so no second pass is needed to recover it. The stack carries four bytes per cell: where it is, which direction to try next, and which direction it was entered from — that last one only so that backing out can put the wall's character back the way it found it. |
+| `maze_render` | [281](../../../../../kernel/progs/maze.asm#L281) | the whole grid in one system call. Thirty-nine of them would work equally well and be thirty-eight more crossings of the ring boundary than the picture is worth. |
+| `m_cell_ptr` | [302](../../../../../kernel/progs/maze.asm#L302) | ECX = cell x, EDX = cell y. Returns RAX = the character. Cells sit at odd coordinates; the even ones between them are the walls. |
+| `m_wall_ptr` | [319](../../../../../kernel/progs/maze.asm#L319) | ECX = cell x, EDX = cell y, R9D = direction. Returns RAX = the character between that cell and its neighbour that way. |
+| `m_seen_ptr` | [343](../../../../../kernel/progs/maze.asm#L343) | ECX = cell x, EDX = cell y. Returns RAX = its visited flag. |
+| `m_neighbour` | [358](../../../../../kernel/progs/maze.asm#L358) | ECX = cell x, EDX = cell y, R9D = direction. Returns EAX = 1 with ECX/EDX moved, or EAX = 0 with them untouched. |
+| `u_rand` | [386](../../../../../kernel/progs/maze.asm#L386) | xorshift64. Returns RAX and advances the state. |
+| `u_rand_mod` | [405](../../../../../kernel/progs/maze.asm#L405) | ECX = bound. Returns EAX in [0, bound). |
+
+## Định nghĩa
+
+Hằng số: 15.
+
+Dữ liệu và state: `u_dx`, `u_dy`, `u_hello`, `u_csline`, `u_csvalue`, `u_pathline`, `u_pathvalue`, `u_id`, `u_window`, `u_sibling`, `u_seed`, `m_passage`, `m_path_len`, `m_cx`, `m_cy`, `m_depth`, `m_cand`, `m_grid`, và 4 nữa
+
+## Phụ thuộc
+
+Gọi vào:
+
+- [ulib.inc](ulib.md) — `u_dec`, `u_exit`, `u_hex`, `u_write`
+
+---
+
+Sinh bởi `docs/generate.py`. Kiểm bởi `docs/verify.py`.

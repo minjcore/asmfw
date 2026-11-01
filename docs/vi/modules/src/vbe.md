@@ -1,0 +1,35 @@
+# vbe.asm
+[`src/vbe.asm`](../../../../src/vbe.asm) — 219 dòng, 4 entry point.
+
+Bring up a linear framebuffer without a VGA option ROM.
+
+There is no legacy INT 10h here to call, so the mode is programmed directly through the Bochs VBE "dispi" register pair that QEMU's std/vmware/cirrus display devices implement. The framebuffer itself is BAR0 of the PCI display function.
+
+## Entry point
+
+| Tên | Dòng | Hợp đồng |
+| --- | --- | --- |
+| `dispi_write` | [40](../../../../src/vbe.asm#L40) | AX = index, DX = value |
+| `dispi_read` | [58](../../../../src/vbe.asm#L58) | AX = index, returns AX |
+| `vga_unblank` | [78](../../../../src/vbe.asm#L78) | let light out of the VGA core. Setting a VBE mode is not enough on its own: the attribute controller's palette-address-source bit still gates the display, and the chip comes out of reset with it clear. On a normal PC the video option ROM sets it during INT 10h mode setting — there is no option ROM here, so the firmware does it. Port 0x3C0 is a shared index/data register driven by a flip-flop; reading the input status register at 0x3DA is what puts it back into index phase. |
+| `gfx_init` | [100](../../../../src/vbe.asm#L100) | locate the display, set FB_WIDTH x FB_HEIGHT x 32, record the framebuffer in the globals. Returns EAX non-zero on success. |
+
+## Định nghĩa
+
+Hằng số: 20.
+
+## Phụ thuộc
+
+Gọi vào:
+
+- [console.asm](console.md) — `fb_console_init`
+- [pci.asm](pci.md) — `pci_bar_addr`, `pci_enable`, `pci_find_class`
+- [util.asm](util.md) — `con_putc`, `con_puthex16`
+
+Bị gọi bởi:
+
+- [init64.asm](init64.md) — `gfx_init`
+
+---
+
+Sinh bởi `docs/generate.py`. Kiểm bởi `docs/verify.py`.

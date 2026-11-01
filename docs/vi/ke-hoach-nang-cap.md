@@ -1,0 +1,240 @@
+# Kế hoạch nâng cấp
+
+Xếp theo tỉ lệ *giá trị / công sức*, không theo mức độ thú vị. Mỗi việc ghi rõ:
+**code đã có gì** (vì phần lớn công sức nằm ở chỗ chưa có), và **control nào
+chứng minh nó đúng** — vì theo `PRINCIPLES.md` §2, một nâng cấp không có cách
+kiểm độc lập thì không tính là xong.
+
+Trạng thái hiện tại được xác nhận từ source, không phải từ trí nhớ.
+
+---
+
+## Tầng 0 — Rẻ, làm ngay
+
+Ba việc dưới đây mỗi việc dưới một giờ, và cả ba đều gỡ một chỗ đau đã tồn tại.
+
+### 0.1 Nối `verify.py` vào `make check`
+
+**Đã có:** `docs/verify.py` chạy được, exit code đúng chuẩn, 305 khẳng định.
+**Cần thêm:** một dòng trong target `check` của `Makefile`.
+**Vì sao:** một bộ kiểm tra chỉ chạy khi có người nhớ ra thì sẽ không được chạy.
+**Control:** chính nó — sửa lệch một số dòng rồi xem `make check` có fail không
+(đã thử, có fail).
+
+### 0.2 Target sinh listing cho kernel
+
+**Đã có:** firmware sinh `build/fw.lst` ở **mọi** lần build, và đó là bản đồ
+symbol duy nhất tồn tại.
+**Chưa có:** kernel không có listing. `WORKFLOW.md` §5 hướng dẫn *"tự tạo một
+cái"* bằng tay, mỗi lần debug.
+**Cần thêm:** một target `lstk` chạy `nasm -l build/kernel.lst`.
+**Vì sao:** biến một `RIP` bị fault thành một dòng source là việc làm thường
+xuyên nhất khi sửa kernel, và hiện nó là việc thủ công.
+**Control:** cố tình gây fault trong một task, rồi kiểm tra dòng tra ra từ
+listing đúng là dòng đã sửa.
+
+### 0.3 Báo cáo độ phủ comment header
+
+**Đã có:** `generate.py` in `—` vào cột hợp đồng khi một entry point không có
+comment header.
+**Cần thêm:** đếm và in ra tổng số — *"12 trong 214 entry point chưa có hợp
+đồng"*.
+**Vì sao:** biến một khoảng trống vô hình thành một con số giảm dần được.
+**Control:** không cần — nó là phép đếm.
+
+---
+
+## Tầng 1 — Gỡ giới hạn, hạ tầng đã có sẵn
+
+Đây là nhóm có tỉ lệ tốt nhất: mỗi việc gỡ một dòng trong mục "Limitations", và
+phần khó nhất của mỗi việc **đã được viết rồi**.
+
+### 1.1 SMBIOS entry point
+
+**Đã có:** toàn bộ client fw_cfg (`fwcfg_init/find/select/read`), và cơ chế cài
+configuration table (`bs_install_configuration_table`) — cả hai đang được dùng
+cho ACPI.
+**Chưa có:** không đọc `etc/smbios` (đã kiểm: không có tham chiếu nào trong
+`src/`).
+**Cần thêm:** đọc hai file `etc/smbios/smbios-anchor` và `smbios-tables`, cài
+anchor vào configuration table dưới GUID SMBIOS3.
+**Công sức:** nhỏ — cùng khuôn với `acpi_init`, không có script nào phải chạy.
+**Control:** OVMF cũng công bố SMBIOS; cho payload in ra vài field và so hai bên.
+
+### 1.2 FAT32 tên dài (LFN)
+
+**Đã có:** cả hai reader đã **nhận diện** entry LFN (`ATTR_LFN` = `0x0F`) và bỏ
+qua chúng.
+**Cần thêm:** giải mã chuỗi UCS-2 rải trong các entry LFN, ghép theo thứ tự
+ngược, so khớp không phân biệt hoa thường.
+**Công sức:** vừa, và phải làm **hai lần** — `src/fat.asm` và `kernel/kfat.asm`.
+Đây là cái giá của việc trùng lặp có chủ ý, và nó nên được ghi vào tài liệu như
+một lần "trả nợ".
+**Vì sao:** đây là giới hạn duy nhất khiến firmware này không đọc được một ESP
+do người khác tạo.
+**Control:** tạo một đĩa có tên dài bằng `mtools`, mount dưới OVMF và dưới asmfw,
+so danh sách file.
+
+### 1.3 `LoadImage` / `StartImage`
+
+**Đã có:** `pe_load` đầy đủ — nạp section, áp base relocation, kiểm biên. BDS
+đang dùng nó.
+**Chưa có:** hai ô trong `bs_template` vẫn trỏ `bs_unsupported`.
+**Cần thêm:** cấp một handle mới cho image con, một `EFI_LOADED_IMAGE_PROTOCOL`
+riêng cho nó, và một chỗ để `Exit()` unwind về (`image_exit_resume` hiện chỉ có
+một mức).
+**Công sức:** vừa. Phần khó là **lồng nhau**: `Exit()` phải quay về đúng cha, nên
+`g_exit_rsp` phải thành một stack chứ không phải một biến.
+**Vì sao:** đây là thứ cho phép boot theo chuỗi — một loader gọi loader khác.
+**Control:** cho payload `LoadImage` một bản copy của chính nó và chạy; nó phải
+in banner hai lần rồi trả về sạch.
+
+### 1.4 Variable store trong RAM
+
+**Đã có:** `GetVariable` và `GetNextVariableName` — nhưng chỉ báo store rỗng.
+**Chưa có:** `SetVariable` (đã kiểm: không tồn tại), và không có nơi lưu.
+**Cần thêm:** một mảng cố định trong `FW_TABLES` chứa (GUID, tên, thuộc tính,
+dữ liệu), cộng ba hàm. **Không** cần lưu bền — biến bay khi tắt máy là hợp lệ với
+biến không có `NON_VOLATILE`.
+**Công sức:** nhỏ đến vừa.
+**Vì sao:** rất nhiều loader thật ghi rồi đọc lại biến của chính mình; hiện chúng
+nhận `EFI_UNSUPPORTED` và có thể bỏ cuộc.
+**Control:** payload ghi một biến, đọc lại, so sánh — và chạy y hệt dưới OVMF.
+
+---
+
+## Tầng 2 — Năng lực mới
+
+### 2.1 Driver AHCI, để chạy được q35
+
+**Đã có:** enumeration PCI đầy đủ, gán BAR đầy đủ, và một driver ATA PIO polled.
+**Vì sao:** hiện `make ovmfk` **buộc** phải dùng máy i440fx, vì kernel tự điều
+khiển cổng ATA legacy còn đĩa của q35 nằm sau AHCI. Nghĩa là control cho kernel
+đang chạy trên một cấu hình máy khác với thứ ta muốn hỗ trợ.
+**Cần thêm:** command list / FIS, và bộ nhớ DMA thật.
+**Công sức:** lớn — đây là driver đầu tiên trong dự án cần DMA.
+**Control:** cùng một đĩa, đọc bằng cả hai driver, so từng byte.
+
+### 2.2 Ghi đĩa (ATA write + FAT write)
+
+**Đã có:** đường đọc hoàn chỉnh; `efi_file.asm` trả `EFI_WRITE_PROTECTED` một
+cách trung thực ở mọi chỗ cần.
+**Cần thêm:** `WRITE SECTORS` (`0x30`), cấp cluster, cập nhật FAT và directory
+entry, và cẩn thận với thứ tự ghi.
+**Công sức:** lớn, và **rủi ro cao** — một reader sai thì báo lỗi, một writer sai
+thì phá đĩa.
+**Khuyến nghị:** chỉ làm khi có nhu cầu thật. Hiện chưa có gì cần ghi.
+
+### 2.3 Kernel tự đọc MADT
+
+**Đã có:** firmware trao RSDP cho kernel, và kernel **in nó ra** — đã kiểm:
+`kernel.asm` chỉ dùng `g_rsdp` để in, không parse gì.
+**Cần thêm:** đi XSDT tìm bảng `APIC` (MADT), đọc danh sách local APIC ID.
+**Công sức:** nhỏ.
+**Vì sao:** đây là bước bắt buộc trước SMP, và nó **tự có giá trị**: in ra số CPU
+mà máy thật sự có là một landmark mới có ý nghĩa.
+**Control:** đối chiếu với `-smp N` truyền cho QEMU.
+
+### 2.4 Scheduler có ưu tiên và tính thời gian
+
+**Đã có:** round robin, `sched_next` trả về task ready tiếp theo.
+**Cần thêm:** một trường ưu tiên trong struct task (`T_SIZE` hiện `0x58`, còn
+chỗ), và cộng dồn tick cho mỗi task.
+**Công sức:** nhỏ.
+**Vì sao:** *"round robin, không ưu tiên"* là một giới hạn đã ghi; và số tick mỗi
+task tiêu thụ là thứ hiện không ai đo được.
+**Control:** một task ưu tiên cao chạy vòng lặp bận phải làm task thấp chậm đi
+theo tỉ lệ đo được, không phải theo cảm nhận.
+
+---
+
+## Tầng 3 — Mốc lớn
+
+### 3.1 Boot một kernel Linux thật ⭐ khuyến nghị
+
+Đây là **bài test tối hậu** cho firmware, và nó đúng với triết lý của dự án hơn
+mọi việc khác trong danh sách này: payload là control do chính ta viết, còn Linux
+là một client ta **không** kiểm soát và **không** thể vô tình viết cho khớp với
+lỗi của mình.
+
+Linux EFI stub *chính là* một image PE32+, nên BDS hiện tại đã nạp được nó.
+Những gì còn thiếu, cụ thể và không nhiều:
+
+| Thiếu gì | Trạng thái hiện tại (đã kiểm) |
+| --- | --- |
+| `LoadedImage->LoadOptions` = cmdline | đang gán `0`, cùng `LoadOptionsSize = 0` |
+| `LoadedImage->FilePath` | đang gán `0` — stub dùng nó để tìm initrd cùng thư mục |
+| memory map phải thật chính xác | `mem_build_map` đã ghi đúng loại theo yêu cầu của người gọi |
+| RSDP trong configuration table | đã có, dưới cả GUID 1.0 và 2.0 |
+| GOP | đã có, một mode |
+
+**Công sức:** vừa cho lần "khởi động được", lớn cho lần "khởi động đến userspace".
+**Vì sao đây là mốc:** một firmware boot được Linux thì không còn là đồ chơi nữa.
+Và mọi lỗi nó phát hiện đều là lỗi thật, vì Linux không biết gì về asmfw.
+**Control:** chính Linux — nếu nó boot dưới OVMF mà không boot ở đây, lỗi ở
+firmware. Cùng một logic đã dùng cho payload, áp lên một client khó tính hơn nhiều.
+**Landmark mới:** dòng đầu tiên của `EFI stub: ...` xuất hiện trong transcript.
+
+### 3.2 SMP
+
+**Cần:** 2.3 trước (MADT), rồi trình tự INIT–SIPI–SIPI để khởi động AP, GDT/TSS
+riêng cho mỗi CPU, và **khoá thật** cho scheduler.
+**Công sức:** lớn nhất trong danh sách. Nó chạm vào mọi giả định của kernel hiện
+tại — nhất là `g_current` là một biến đơn, và khoá console là mutex một chủ.
+**Khuyến nghị:** làm sau 3.1. Boot Linux xong sẽ hiểu rõ hơn cái gì thật sự cần.
+
+### 3.3 Chạy trên máy thật, qua coreboot
+
+**Rào cản không phải code mà là vật lý:** firmware này giả định RAM hoạt động
+ngay lúc reset. Trên máy thật, memory controller phải được train trước, và trên
+mọi nền tảng Intel sau Ivy Bridge, code làm việc đó chỉ tồn tại dưới dạng blob
+FSP đóng.
+**Nghĩa là:** đường đi là trở thành một **coreboot payload**, không phải flash
+trực tiếp. Khi đó coreboot lo train RAM, asmfw lo phần UEFI.
+**Công sức:** vừa về code (bỏ SEC/PEI, nhận sẵn máy đã có RAM), nhưng cần phần
+cứng và một programmer flash.
+
+---
+
+## Không nên làm
+
+- **Secure Boot** — cần RSA, SHA-256, phân tích X.509 và một cơ sở dữ liệu khoá.
+  Rất nhiều code crypto, và nó không dạy thêm gì về firmware.
+- **Free list cho allocator** — `AllocatePages` là con trỏ bump và điều đó **đúng**
+  cho một firmware cấp phát vài lần rồi giao máy đi. Một free list là thêm code
+  không có người dùng.
+- **Mạng (PXE, TCP/IP)** — một dự án riêng, không phải một nâng cấp.
+- **Tách `REFERENCE.md`** — nghe hấp dẫn nhưng khoảng 20 tham chiếu nội bộ dạng
+  chữ (`§7.5`, `§6.1`, không phải link) sẽ **âm thầm** thành con trỏ chết. Chỉ làm
+  nếu viết lại từng cái, và khi đó nên thêm một bộ kiểm tham chiếu vào
+  `verify.py` trước.
+
+---
+
+## Thứ tự đề nghị
+
+```
+Tầng 0 (0.1, 0.2, 0.3)        một buổi — dọn đường
+   │
+1.4 variable store             ─┐
+1.3 LoadImage/StartImage        ├─ ba việc này là thứ Linux sẽ cần
+1.1 SMBIOS                     ─┘   (và mỗi việc tự có giá trị)
+   │
+3.1 BOOT LINUX  ⭐              mốc lớn — sau đây dự án đổi tính chất
+   │
+2.3 MADT → 2.4 scheduler       nhỏ, mở đường cho SMP
+   │
+1.2 LFN                        khi cần đọc đĩa của người khác
+2.1 AHCI                       khi muốn control chạy trên q35
+   │
+3.2 SMP                        sau khi đã biết cái gì thật sự cần
+```
+
+Một quy tắc áp cho mọi việc trong danh sách, lấy từ `WORKFLOW.md` §3:
+
+> Một thay đổi làm máy nói ra điều **mới** thì **thêm** một landmark. Một thay đổi
+> làm máy nói ra điều **khác** thì **sửa** landmark nó vừa làm sai, trong cùng
+> commit đó.
+
+Nghĩa là mỗi việc trong kế hoạch này đều kết thúc bằng một dòng mới trong
+`tools/smoke.sh`, không phải bằng một lần chạy thử thành công.

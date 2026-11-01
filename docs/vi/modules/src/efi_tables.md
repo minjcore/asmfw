@@ -1,0 +1,37 @@
+# efi_tables.asm
+[`src/efi_tables.asm`](../../../../src/efi_tables.asm) — 486 dòng, 7 entry point.
+
+Build the structures an EFI image is handed.
+
+The tables are laid out as templates in the flash volume and copied into RAM at DXE time.
+
+## Entry point
+
+| Tên | Dòng | Hợp đồng |
+| --- | --- | --- |
+| `efi_init` | [16](../../../../src/efi_tables.asm#L16) | populate the RAM structures and register the protocols |
+| `efi_publish_volume` | [175](../../../../src/efi_tables.asm#L175) | register Simple File System on the disk handle. Separate from efi_init because it can only happen once the volume has been mounted, and mounting is a BDS decision: which partition to look at is a boot policy question, not a device one. |
+| `efi_fix_crc` | [201](../../../../src/efi_tables.asm#L201) | RDI = a table with an EFI_TABLE_HEADER. The CRC is taken over HeaderSize bytes with the CRC field itself zeroed. |
+| `crc32` | [221](../../../../src/efi_tables.asm#L221) | RSI = data, ECX = length, returns EAX. The reflected CRC-32 the UEFI spec calls for. Computed a bit at a time: a 1 KiB lookup table would be faster and this runs a few hundred bytes, once. |
+| `proto_add` | [258](../../../../src/efi_tables.asm#L258) | RAX = handle, RSI = GUID, RDI = interface pointer |
+| `proto_find` | [281](../../../../src/efi_tables.asm#L281) | RSI = GUID, RAX = handle to match, or 0 for "any handle". Returns RAX = interface pointer, or 0. |
+| `vendor_string_end` | [486](../../../../src/efi_tables.asm#L486) | — |
+
+## Định nghĩa
+
+Dữ liệu và state: `st_template`, `bs_template`, `rt_template`, `conout_template`, `conin_template`, `gop_template`, `guid_text_output`, `guid_text_input`, `guid_gop`, `guid_loaded_image`, `vendor_string`
+
+## Phụ thuộc
+
+Gọi vào:
+
+- [util.asm](util.md) — `mem_cmp`, `mem_copy`
+
+Bị gọi bởi:
+
+- [efi_bs.asm](efi_bs.md) — `crc32`, `efi_fix_crc`, `proto_find`
+- [init64.asm](init64.md) — `efi_init`, `efi_publish_volume`, `proto_add`
+
+---
+
+Sinh bởi `docs/generate.py`. Kiểm bởi `docs/verify.py`.

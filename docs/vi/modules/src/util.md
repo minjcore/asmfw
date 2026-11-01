@@ -1,0 +1,48 @@
+# util.asm
+[`src/util.asm`](../../../../src/util.asm) — 201 dòng, 12 entry point.
+
+Console output primitives and memory helpers.
+
+Internal calling convention (not the EFI one): arguments in registers as documented per routine, and every routine preserves everything it touches.
+
+## Entry point
+
+| Tên | Dòng | Hợp đồng |
+| --- | --- | --- |
+| `con_putc` | [13](../../../../src/util.asm#L13) | emit AL to every console the firmware currently has |
+| `con_puts` | [34](../../../../src/util.asm#L34) | print the NUL-terminated string at RSI |
+| `con_puthex` | [51](../../../../src/util.asm#L51) | print RAX as CL hex digits (CL = 2, 4, 8 or 16) |
+| `con_puthex8` | [81](../../../../src/util.asm#L81) | — |
+| `con_puthex16` | [88](../../../../src/util.asm#L88) | — |
+| `con_puthex32` | [95](../../../../src/util.asm#L95) | — |
+| `con_puthex64` | [102](../../../../src/util.asm#L102) | — |
+| `con_putdec` | [112](../../../../src/util.asm#L112) | print RAX in decimal |
+| `mem_set` | [149](../../../../src/util.asm#L149) | fill RCX bytes at RDI with AL |
+| `mem_copy` | [162](../../../../src/util.asm#L162) | copy RCX bytes from RSI to RDI |
+| `mem_cmp` | [175](../../../../src/util.asm#L175) | compare RCX bytes at RSI and RDI; ZF set if equal |
+| `panic` | [188](../../../../src/util.asm#L188) | print RSI and stop. Never returns. |
+
+## Phụ thuộc
+
+Gọi vào:
+
+- [console.asm](console.md) — `fb_putc`
+- [serial.asm](serial.md) — `ser_putc`
+
+Bị gọi bởi:
+
+- [acpi.asm](acpi.md) — `con_putc`, `con_putdec`, `con_puthex64`, `mem_copy`
+- [efi_bs.asm](efi_bs.md) — `mem_cmp`, `mem_copy`
+- [efi_file.asm](efi_file.md) — `mem_cmp`, `mem_copy`, `mem_set`
+- [efi_proto.asm](efi_proto.md) — `con_putc`, `mem_copy`
+- [efi_tables.asm](efi_tables.md) — `mem_cmp`, `mem_copy`
+- [fat.asm](fat.md) — `mem_cmp`
+- [gpt.asm](gpt.md) — `mem_cmp`
+- [init64.asm](init64.md) — `con_putc`, `con_putdec`, `con_puthex64`, `con_puts`, `panic`
+- [macros.inc](macros.md) — `con_puts`
+- [pe.asm](pe.md) — `mem_copy`, `mem_set`
+- [vbe.asm](vbe.md) — `con_putc`, `con_puthex16`
+
+---
+
+Sinh bởi `docs/generate.py`. Kiểm bởi `docs/verify.py`.
