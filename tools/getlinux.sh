@@ -16,6 +16,8 @@ DIR=${1:-build/linux}
 BASE=https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/x86_64/netboot-3.24.3
 KERNEL_SHA=17fbd3efd16f2e7cb1b945f06423b37399ba7d5ac8cdd3665e7f13f363500e85
 INITRD_SHA=41d55a3fd650c99f5fa2a9dfed1eff3b441186831fd4f8d2223f717d8a28217d
+# The same release's modules, as a squashfs; only efivarfs.ko is used.
+MODLOOP_SHA=16f3a2470f538f529c475134103e83321619e6d8e2b0367beb4a758304449ffe
 
 mkdir -p "$DIR"
 
@@ -36,3 +38,4 @@ fetch() {                                   # fetch <name> <sha256>
 
 fetch vmlinuz-virt "$KERNEL_SHA"
 fetch initramfs-virt "$INITRD_SHA"
+fetch modloop-virt "$MODLOOP_SHA"

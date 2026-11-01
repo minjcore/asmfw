@@ -138,6 +138,10 @@ GVAR g_bs_exited,     4     ; set once ExitBootServices has been called
 GVAR g_var_store,     8     ; the variable records, runtime services data
 GVAR g_exit_rsp,      8     ; stack to unwind to when the image calls Exit
 GVAR g_current_image, 8     ; the handle of the image running now
+GVAR g_virtual,       4     ; set once SetVirtualAddressMap has run
+GVAR g_vmap,          8     ; the OS's map, only while that call runs
+GVAR g_vmap_size,     8
+GVAR g_vmap_dsize,    8
 GVAR g_rt_shadow,     8     ; the flash volume's copy in runtime code, or 0
 GVAR g_boot_dir,      4     ; first cluster of \EFI\BOOT
 GVAR g_cmdline,       8     ; the image's load options, CHAR16, or 0

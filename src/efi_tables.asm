@@ -415,7 +415,7 @@ rt_template:
     dq  rt_unsupported                          ; SetTime
     dq  rt_unsupported                          ; GetWakeupTime
     dq  rt_unsupported                          ; SetWakeupTime
-    dq  rt_unsupported                          ; SetVirtualAddressMap
+    dq  rt_set_virtual_address_map
     dq  rt_unsupported                          ; ConvertPointer
     dq  rt_get_variable
     dq  rt_get_next_variable_name

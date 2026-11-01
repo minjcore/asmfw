@@ -1,5 +1,5 @@
 # efi_rt.asm
-[`src/efi_rt.asm`](../../../src/efi_rt.asm) — 194 lines, 4 entry points.
+[`src/efi_rt.asm`](../../../src/efi_rt.asm) — 349 lines, 7 entry points.
 
 Runtime services.
 
@@ -13,6 +13,9 @@ These are the services that outlive ExitBootServices. This firmware keeps them h
 | `rt_get_time` | [37](../../../src/efi_rt.asm#L37) | — |
 | `rtc_decode` | [139](../../../src/efi_rt.asm#L139) | EDI = raw CMOS byte, ESI = status register B. Returns AL as a binary value, converting from BCD when bit 2 says to. |
 | `rt_reset_system` | [160](../../../src/efi_rt.asm#L160) | — |
+| `rt_set_virtual_address_map` | [214](../../../src/efi_rt.asm#L214) | SetVirtualAddressMap(MemoryMapSize, DescriptorSize, DescriptorVersion, VirtualMap). The OS has chosen a virtual address for every runtime range and says which in VirtualMap. Every pointer the firmware will follow from now on, and every pointer it hands out, is rewritten to match: the runtime services table's entries, the system table's RuntimeServices, ConfigurationTable and FirmwareVendor, and the variable store. Then the two tables' CRCs are taken again. It may be called once, and only after ExitBootServices. What is not rewritten is code: the runtime functions reach their globals through absolute physical addresses, assembled in. Those keep working only because the globals' pages are runtime memory and an OS that maps them at a new address keeps the identity mapping too — which Linux does, on purpose, for exactly this kind of firmware. An OS that dropped the identity mapping would find the variable services faulting. |
+| `rt_convert` | [295](../../../src/efi_rt.asm#L295) | RAX = a physical address. Returns RAX = its virtual address under the map SetVirtualAddressMap was given, CF clear; or CF set and RAX unchanged if no runtime range in the map covers it. Zero stays zero. |
+| `rt_convert_at` | [341](../../../src/efi_rt.asm#L341) | RDI = where a pointer is kept. Converts it in place; one that no runtime range covers is left as it was. |
 
 ## Definitions
 
@@ -22,6 +25,7 @@ Constants: 12.
 
 Calls into:
 
+- [efi_tables.asm](efi_tables.md) — `efi_fix_crc`
 - [init64.asm](init64.md) — `cmos_read`
 
 ---

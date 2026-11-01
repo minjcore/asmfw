@@ -25,9 +25,9 @@ The firmware in flash ROM. Narrative: REFERENCE.md §3.
 | [efi_file.asm](src/efi_file.md) | 938 | 19 | Simple File System and File protocols over the FAT32 reader |
 | [efi_image.asm](src/efi_image.md) | 274 | 6 | LoadImage, StartImage, UnloadImage, and where Exit returns |
 | [efi_proto.asm](src/efi_proto.md) | 783 | 20 | The protocols an image actually touches |
-| [efi_rt.asm](src/efi_rt.md) | 194 | 4 | Runtime services |
+| [efi_rt.asm](src/efi_rt.md) | 349 | 7 | Runtime services |
 | [efi_tables.asm](src/efi_tables.md) | 539 | 8 | Build the structures an EFI image is handed |
-| [efi_var.asm](src/efi_var.md) | 515 | 8 | UEFI variables, kept in RAM |
+| [efi_var.asm](src/efi_var.md) | 551 | 8 | UEFI variables, kept in RAM |
 | [fat.asm](src/fat.md) | 456 | 8 | Enough FAT32 to find and read one file |
 | [fw.asm](src/fw.md) | 72 | 1 | The flash volume |
 | [gpt.asm](src/gpt.md) | 168 | 1 | Find the EFI system partition |
@@ -42,7 +42,7 @@ The firmware in flash ROM. Narrative: REFERENCE.md §3.
 | [timer.asm](src/timer.md) | 109 | 2 | Delays, measured against the 8254 |
 | [util.asm](src/util.md) | 201 | 12 | Console output primitives and memory helpers |
 | [vbe.asm](src/vbe.md) | 219 | 4 | Bring up a linear framebuffer without a VGA option ROM |
-| [const.inc](src/const.md) | 147 | 0 | Build-wide constants and the firmware's physical memory map |
+| [const.inc](src/const.md) | 151 | 0 | Build-wide constants and the firmware's physical memory map |
 | [efi.inc](src/efi.md) | 350 | 0 | The UEFI ABI as this firmware implements it |
 | [font.inc](src/font.md) | 109 | 0 | The console font, one 8x16 cell per printable ASCII character |
 | [macros.inc](src/macros.md) | 31 | 0 | Small assembly conveniences |

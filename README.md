@@ -157,8 +157,8 @@ through its own EFI stub, all the way to userspace:
 [    0.000000] efi: EFI v2.7 by asmfw
 [    0.000000] efi: ACPI 2.0=0x1110000 ACPI=0x1110000 SMBIOS=0x1132000 INITRD=...
 [    0.000000] DMI: QEMU Standard PC (i440FX + PIIX, 1996), BIOS
-[    0.190500] efi: Unable to switch EFI into virtual mode (status=8000000000000003)!
-[    3.862673] Run /init as init process
+[    3.003532] efivars: Registered efivars operations
+[    3.778160] Run /init as init process
 Alpine Init 3.14.1-r0
 ...
 Launching initramfs emergency recovery shell.
@@ -189,11 +189,19 @@ because the payload was written by the same hands as the firmware:
 - **The memory map described the runtime tables as boot services data**, which
   an OS is entitled to reuse.
 
+Linux keeps the runtime services. `SetVirtualAddressMap` rewrites every
+pointer the firmware hands out or follows, and from the recovery shell the
+check loads `efivarfs` (from the same release's modloop, attached as a virtio
+disk) and talks to the variable store through it:
+
+```
+fw says: asmfw 0.1             <- a variable the firmware set at boot
+read back: linux was here      <- written by Linux, read back by Linux
+```
+
 The command line comes from `\EFI\BOOT\CMDLINE`, a file beside the image: a
 real boot manager takes load options from a `Boot####` variable, and with no
-persistent variables there is none. `SetVirtualAddressMap` is still
-unsupported, and Linux responds as it is meant to — it switches the runtime
-services off and boots on without them.
+persistent variables there is none.
 
 ## The payload is the test
 
@@ -342,9 +350,11 @@ applied to something considerably easier to get subtly wrong.
   so it publishes one fewer. The ACPI loader script's `WRITE_POINTER` command is skipped as well: it writes
   back into `fw_cfg`, which only matters to features this firmware does not
   expose.
-- **No `SetVirtualAddressMap`.** Runtime services stay valid only at their
-  physical addresses, which is why Linux turns them off: it will only call
-  runtime services that have agreed to move.
+- **`SetVirtualAddressMap` moves the pointers, not the code's globals.** The
+  runtime functions reach their globals through physical addresses assembled
+  in; that works because Linux keeps an identity mapping of every runtime
+  range for exactly this kind of firmware. An OS that dropped it would find
+  the variable services faulting.
 - **The runtime copy costs 1 MiB.** The whole firmware volume is copied into
   runtime services code so that its layout, and every relative reference in
   it, is unchanged. Only a few kilobytes of it are runtime code.

@@ -98,7 +98,7 @@ check_fw() {
     want "$log" "every one of them checksums to zero"
     want "$log" "structures walked to the end marker; entry point checksums to zero"
     want "$log" "system: QEMU Standard PC (i440FX + PIIX, 1996)"
-    want "$log" "appended to, found among 1 by enumeration, deleted"
+    want "$log" "appended to, found among 2 by enumeration, deleted"
     want "$log" "runtime services and their code are runtime memory"
     want "$log" "a copy of me, started by its parent with load options; leaving through Exit()"
     want "$log" "Exit() came back with its status, and every callee-saved register survived"
@@ -203,17 +203,22 @@ check_linux() {
     fi
     log=$LOGS/linux.log
     echo "== linux                ($log)"
-    ( $TIMEOUT -s TERM "$L_SECONDS" $QEMU -machine pc -m 512 -bios "$FW" \
-        -drive file="$BUILD/linux.img",format=raw,if=ide -no-reboot \
-        -display none -serial stdio > "$log" 2>&1 || true ) 2>/dev/null
+    rm -f "$log"
+    ( tools/linuxvars.sh "$log" | $TIMEOUT -s TERM "$L_SECONDS" $QEMU -machine pc -m 512 -bios "$FW" \
+        -drive file="$BUILD/linux.img",format=raw,if=ide \
+        -drive file="$BUILD/linux/modloop-virt",format=raw,if=virtio,readonly=on \
+        -no-reboot -display none -serial stdio > "$log" 2>&1 || true ) 2>/dev/null
 
     want "$log" "[BDS] command line: console=ttyS0 initrd=\\INITRD"
     want "$log" "efi: EFI v2.7 by asmfw"
     want "$log" "SMBIOS 2.8 present."
-    want "$log" "efi: Unable to switch EFI into virtual mode"   # and goes on
+    deny "$log" "efi: Unable to switch EFI into virtual mode"   # SetVirtualAddressMap took
+    want "$log" "efivars: Registered efivars operations"
     want "$log" "Run /init as init process"
     want "$log" "Alpine Init"
     want "$log" "Launching initramfs emergency recovery shell."
+    want "$log" "fw says: asmfw 0.1"                # GetVariable, after the switch
+    want "$log" "read back: linux was here"         # SetVariable, then GetVariable
     deny "$log" "Kernel panic"
 
     if [ ! -f "$OVMF_CODE" ] || [ ! -f "$OVMF_VARS" ]; then
@@ -223,13 +228,16 @@ check_linux() {
     log=$LOGS/ovmfl.log
     echo "== control: linux under OVMF     ($log)"
     cp "$OVMF_VARS" "$BUILD/smoke-vars.fd"
-    ( $TIMEOUT -s TERM "$L_SECONDS" $QEMU -machine pc -m 512 -no-reboot \
+    rm -f "$log"
+    ( tools/linuxvars.sh "$log" | $TIMEOUT -s TERM "$L_SECONDS" $QEMU -machine pc -m 512 -no-reboot \
         -drive if=pflash,format=raw,unit=0,readonly=on,file="$OVMF_CODE" \
         -drive if=pflash,format=raw,unit=1,file="$BUILD/smoke-vars.fd" \
+        -drive file="$BUILD/linux/modloop-virt",format=raw,if=virtio,readonly=on \
         -kernel "$BUILD/linux/vmlinuz-virt" -initrd "$BUILD/linux/initramfs-virt" \
         -append console=ttyS0 -display none -serial stdio > "$log" 2>&1 || true ) 2>/dev/null
     want "$log" "Run /init as init process"
     want "$log" "Launching initramfs emergency recovery shell."
+    want "$log" "read back: linux was here"
     deny "$log" "Kernel panic"
 }
 

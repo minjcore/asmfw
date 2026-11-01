@@ -53,6 +53,7 @@ VAR_ATTR_REFUSED equ EFI_VARIABLE_HW_ERROR_RECORD | EFI_VARIABLE_AUTH_WRITE \
 var_init:
     push    rcx
     push    rdx
+    push    rsi
     push    rdi
     mov     ecx, VAR_STORE_PAGES
     mov     edx, EfiRuntimeServicesData
@@ -64,6 +65,29 @@ var_init:
     mov     ecx, VAR_SLOTS * VAR_REC_SIZE / 8
     xor     eax, eax
     rep     stosq
+
+    ; One variable of the firmware's own, so that an OS listing the store has
+    ; something to find that it did not put there itself.
+    mov     rdi, [abs g_var_store]
+    mov     dword [rdi + VR_USED], 1
+    mov     dword [rdi + VR_ATTR], EFI_VARIABLE_BOOTSERVICE_ACCESS | EFI_VARIABLE_RUNTIME_ACCESS
+    mov     dword [rdi + VR_DSIZE], fw_version_len
+    mov     dword [rdi + VR_NSIZE], fw_version_name_len
+    lea     rsi, [rel asmfw_vendor_guid]
+    mov     rax, [rsi]
+    mov     [rdi + VR_GUID], rax
+    mov     rax, [rsi + 8]
+    mov     [rdi + VR_GUID + 8], rax
+    push    rdi
+    lea     rsi, [rel fw_version_name]
+    lea     rdi, [rdi + VR_NAME]
+    mov     ecx, fw_version_name_len
+    rep     movsb
+    pop     rdi
+    lea     rsi, [rel fw_version]
+    lea     rdi, [rdi + VR_DATA]
+    mov     ecx, fw_version_len
+    rep     movsb
     puts    msg_var
     mov     eax, 1
     jmp     .done
@@ -72,6 +96,7 @@ var_init:
     xor     eax, eax
 .done:
     pop     rdi
+    pop     rsi
     pop     rdx
     pop     rcx
     ret
@@ -510,6 +535,17 @@ rt_query_variable_info:
 .bad:
     mov     rax, EFI_INVALID_PARAMETER
     ret
+
+align 8
+asmfw_vendor_guid:                              ; 6A5F1D2E-3B4C-4D5E-8F90-A1B2C3D4E5F6
+    dd 0x6A5F1D2E
+    dw 0x3B4C
+    dw 0x4D5E
+    db 0x8F, 0x90, 0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6
+fw_version_name:    dw __utf16le__("AsmfwVersion"), 0
+fw_version_name_len equ $ - fw_version_name
+fw_version:         db "asmfw 0.1"
+fw_version_len      equ $ - fw_version
 
 CSTR msg_var,    "[DXE] variables: 32 slots of 1760 bytes, in RAM", 10
 CSTR msg_no_var, "[DXE] no memory for a variable store", 10

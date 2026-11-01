@@ -152,7 +152,9 @@ $(LKERNEL) $(LINITRD):
 
 runl: $(FW) $(LESP)
 	$(QEMU) -machine pc -m 512 -bios $(FW) \
-	  -drive file=$(LESP),format=raw,if=ide -no-reboot -serial mon:stdio
+	  -drive file=$(LESP),format=raw,if=ide \
+	  -drive file=$(LDIR)/modloop-virt,format=raw,if=virtio,readonly=on \
+	  -no-reboot -serial mon:stdio
 
 seriall: $(FW) $(LESP)
 	$(QEMU) -machine pc -m 512 -bios $(FW) \

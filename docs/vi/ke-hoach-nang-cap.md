@@ -219,8 +219,13 @@ payload do cùng một người viết với firmware:
    LoadFile2 và chỉ chuyển sang `initrd=` khi nhận `EFI_NOT_FOUND`.
 4. **Memory map báo bảng runtime là boot services data** (đã sửa trước đó).
 
-**Còn lại:** `SetVirtualAddressMap` vẫn `EFI_UNSUPPORTED`, nên Linux tắt runtime
-services (đúng hành vi được thiết kế — nó boot tiếp). Load options lấy từ file
+**`SetVirtualAddressMap` — ✅ đã làm:** đổi mọi con trỏ firmware trao ra hoặc tự
+đi theo (bảng RT, `ST->RuntimeServices/ConfigurationTable/FirmwareVendor`, kho
+biến), tính lại CRC, chỉ cho gọi một lần sau `ExitBootServices`. Linux giữ
+runtime services; từ shell, phép kiểm nạp `efivarfs` (lấy từ modloop cùng bản
+phát hành, gắn như ổ virtio) rồi đọc biến `AsmfwVersion` firmware đặt sẵn, ghi
+một biến, đọc lại, xoá. OVMF chạy y hệt. Giới hạn: code runtime đọc globals qua
+địa chỉ vật lý ghi cứng — chạy được vì Linux cố ý giữ map 1:1 cho vùng runtime. Load options lấy từ file
 `\EFI\BOOT\CMDLINE` vì không có biến `Boot####` bền.
 
 #### Kế hoạch ban đầu

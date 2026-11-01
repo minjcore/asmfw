@@ -33,6 +33,7 @@ Bị gọi bởi:
 
 - [efi_bs.asm](efi_bs.md) — `crc32`, `efi_fix_crc`, `proto_find`
 - [efi_image.asm](efi_image.md) — `proto_add`
+- [efi_rt.asm](efi_rt.md) — `efi_fix_crc`
 - [init64.asm](init64.md) — `efi_init`, `efi_publish_volume`, `proto_add`
 
 ---

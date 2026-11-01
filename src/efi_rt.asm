@@ -192,3 +192,158 @@ rt_reset_system:
 .hang:
     hlt
     jmp     .hang
+
+; ----------------------------------------------------------------------------
+; rt_set_virtual_address_map -- SetVirtualAddressMap(MemoryMapSize,
+; DescriptorSize, DescriptorVersion, VirtualMap).
+;
+; The OS has chosen a virtual address for every runtime range and says which
+; in VirtualMap. Every pointer the firmware will follow from now on, and every
+; pointer it hands out, is rewritten to match: the runtime services table's
+; entries, the system table's RuntimeServices, ConfigurationTable and
+; FirmwareVendor, and the variable store. Then the two tables' CRCs are taken
+; again. It may be called once, and only after ExitBootServices.
+;
+; What is not rewritten is code: the runtime functions reach their globals
+; through absolute physical addresses, assembled in. Those keep working only
+; because the globals' pages are runtime memory and an OS that maps them at a
+; new address keeps the identity mapping too -- which Linux does, on purpose,
+; for exactly this kind of firmware. An OS that dropped the identity mapping
+; would find the variable services faulting.
+; ----------------------------------------------------------------------------
+rt_set_virtual_address_map:
+    push    rbx
+    push    rsi
+    push    rdi
+    cmp     dword [abs g_virtual], 0
+    jne     .unsupported
+    cmp     dword [abs g_bs_exited], 0
+    je      .unsupported
+    test    r9, r9
+    jz      .bad
+    cmp     rdx, MD_ATTR + 8                    ; a descriptor must reach Attribute
+    jb      .bad
+    cmp     r8d, 1                              ; EFI_MEMORY_DESCRIPTOR_VERSION
+    jne     .bad
+    mov     [abs g_vmap], r9
+    mov     [abs g_vmap_size], rcx
+    mov     [abs g_vmap_dsize], rdx
+
+    ; Check every pointer converts before changing any, so a map that leaves
+    ; one out fails cleanly instead of leaving the tables half moved.
+    mov     rbx, EFI_RT + HDR_SIZE
+    mov     ecx, (RT_SIZE - HDR_SIZE) / 8
+.check:
+    mov     rax, [rbx]
+    call    rt_convert
+    jc      .not_found
+    add     rbx, 8
+    dec     ecx
+    jnz     .check
+    mov     rax, EFI_RT
+    call    rt_convert
+    jc      .not_found
+
+    mov     rbx, EFI_RT + HDR_SIZE
+    mov     ecx, (RT_SIZE - HDR_SIZE) / 8
+.entry:
+    mov     rax, [rbx]
+    call    rt_convert
+    mov     [rbx], rax
+    add     rbx, 8
+    dec     ecx
+    jnz     .entry
+
+    mov     rbx, EFI_ST
+    lea     rdi, [rbx + ST_RUNTIMESERVICES]
+    call    rt_convert_at
+    lea     rdi, [rbx + ST_CONFIGTABLE]
+    call    rt_convert_at
+    lea     rdi, [rbx + ST_FIRMWAREVENDOR]
+    call    rt_convert_at
+    mov     rdi, g_var_store
+    call    rt_convert_at
+
+    mov     rdi, EFI_RT
+    call    efi_fix_crc
+    mov     rdi, EFI_ST
+    call    efi_fix_crc
+
+    mov     dword [abs g_virtual], 1
+    xor     eax, eax
+    jmp     .done
+.not_found:
+    mov     rax, EFI_NOT_FOUND
+    jmp     .done
+.unsupported:
+    mov     rax, EFI_UNSUPPORTED
+    jmp     .done
+.bad:
+    mov     rax, EFI_INVALID_PARAMETER
+.done:
+    mov     qword [abs g_vmap], 0
+    pop     rdi
+    pop     rsi
+    pop     rbx
+    ret
+
+; ----------------------------------------------------------------------------
+; rt_convert -- RAX = a physical address. Returns RAX = its virtual address
+; under the map SetVirtualAddressMap was given, CF clear; or CF set and RAX
+; unchanged if no runtime range in the map covers it. Zero stays zero.
+; ----------------------------------------------------------------------------
+rt_convert:
+    push    rcx
+    push    rdx
+    push    rsi
+    push    rdi
+    test    rax, rax
+    jz      .hit_zero
+    mov     rsi, [abs g_vmap]
+    mov     rdi, rsi
+    add     rdi, [abs g_vmap_size]
+.next:
+    cmp     rsi, rdi
+    jae     .miss
+    bt      qword [rsi + MD_ATTR], 63           ; EFI_MEMORY_RUNTIME
+    jnc     .skip
+    mov     rcx, [rsi + MD_PHYS]
+    cmp     rax, rcx
+    jb      .skip
+    mov     rdx, [rsi + MD_PAGES]
+    shl     rdx, 12
+    add     rdx, rcx
+    cmp     rax, rdx
+    jae     .skip
+    sub     rax, rcx
+    add     rax, [rsi + MD_VIRT]
+    clc
+    jmp     .done
+.skip:
+    add     rsi, [abs g_vmap_dsize]
+    jmp     .next
+.miss:
+    stc
+    jmp     .done
+.hit_zero:
+    clc
+.done:
+    pop     rdi
+    pop     rsi
+    pop     rdx
+    pop     rcx
+    ret
+
+; ----------------------------------------------------------------------------
+; rt_convert_at -- RDI = where a pointer is kept. Converts it in place; one
+; that no runtime range covers is left as it was.
+; ----------------------------------------------------------------------------
+rt_convert_at:
+    push    rax
+    mov     rax, [rdi]
+    call    rt_convert
+    jc      .keep
+    mov     [rdi], rax
+.keep:
+    pop     rax
+    ret

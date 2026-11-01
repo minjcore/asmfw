@@ -1,5 +1,5 @@
 # const.inc
-[`src/const.inc`](../../../src/const.inc) — 147 lines, 0 entry points.
+[`src/const.inc`](../../../src/const.inc) — 151 lines, 0 entry points.
 
 Build-wide constants and the firmware's physical memory map.
 
