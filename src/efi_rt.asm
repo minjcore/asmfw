@@ -2,8 +2,8 @@
 ; efi_rt.asm -- runtime services
 ;
 ; These are the services that outlive ExitBootServices. This firmware keeps
-; them honest but small: a real clock, no variable store, and a reset that
-; actually resets.
+; them honest but small: a real clock, a reset that actually resets, and the
+; variable services, which live in efi_var.asm.
 ;
 ; SetVirtualAddressMap is not supported, so the table stays valid only at its
 ; physical address. An OS that wants to call these after paging is its own
@@ -149,21 +149,6 @@ rtc_decode:
     add     eax, ecx
 .done:
     pop     rcx
-    ret
-
-; ----------------------------------------------------------------------------
-; GetVariable / GetNextVariableName
-;
-; There is no non-volatile store behind this firmware: the flash it runs from
-; is read-only to it, and no variable region has been carved out. Reporting
-; "not found" is the honest answer, and callers treat it as an empty store.
-; ----------------------------------------------------------------------------
-rt_get_variable:
-    mov     rax, EFI_NOT_FOUND
-    ret
-
-rt_get_next_variable_name:
-    mov     rax, EFI_NOT_FOUND
     ret
 
 ; ----------------------------------------------------------------------------

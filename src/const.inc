@@ -135,6 +135,7 @@ GVAR g_cfg_count,     4     ; entries in the configuration table
 GVAR g_tpl,           8     ; current task priority level
 GVAR g_mono_count,    8     ; the monotonic counter
 GVAR g_bs_exited,     4     ; set once ExitBootServices has been called
+GVAR g_var_store,     8     ; the variable records, runtime services data
 GVAR g_exit_rsp,      8     ; stack to unwind to when the image calls Exit
 GVAR g_exit_status,   8     ; the status it exited with
 

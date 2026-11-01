@@ -46,6 +46,7 @@
 %include "efi_tables.asm"
 %include "efi_bs.asm"
 %include "efi_rt.asm"
+%include "efi_var.asm"
 %include "efi_proto.asm"
 %include "efi_file.asm"
 

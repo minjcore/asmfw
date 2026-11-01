@@ -66,8 +66,11 @@ types, `AllocatePool`, `GetMemoryMap`, `ExitBootServices`), protocol lookup
 return `EFI_UNSUPPORTED` from a real function rather than being null pointers,
 so a caller gets a status code instead of a fault.
 
-Runtime Services implements `GetTime` off the RTC and `ResetSystem`. The
-variable store reports empty, because there is none.
+Runtime Services implements `GetTime` off the RTC, `ResetSystem`, and the
+four variable calls — `GetVariable`, `SetVariable`, `GetNextVariableName`,
+`QueryVariableInfo` — over 32 fixed slots in RAM. Nothing persists across a
+reset: non-volatile variables are accepted and kept for the boot, as OVMF does
+when it is built without a variable store.
 
 ## Layout
 
@@ -97,6 +100,7 @@ src/
   efi_tables.asm    the table templates, CRCs, protocol database
   efi_bs.asm        boot services
   efi_rt.asm        runtime services
+  efi_var.asm       the variable services, over a store in RAM
   efi_proto.asm     text in/out, graphics output
   efi_file.asm      simple file system, file, block I/O
 payload/
@@ -286,7 +290,10 @@ applied to something considerably easier to get subtly wrong.
 - **No `LoadImage` / `StartImage`.** BDS loads the one image it boots; a loader
   cannot ask the firmware to load another.
 - **One ATA disk**, primary master, PIO, LBA28.
-- **No Secure Boot**, no variable store, no setup UI.
+- **Variables live in RAM.** 32 slots, a 127-character name and 1760 bytes of
+  data each. No authenticated writes (`EFI_UNSUPPORTED`), no hardware error
+  records, and nothing survives a reset.
+- **No Secure Boot**, no setup UI.
 - **Round robin, and no priorities.** The next runnable task after the current
   one wins, and that is the whole policy. A task blocked on a lock, a deadline
   or a keystroke is skipped; nothing is ever preferred to anything else, and a

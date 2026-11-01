@@ -25,6 +25,7 @@ Called by:
 - [efi_bs.asm](efi_bs.md) — `mem_alloc_pages`, `mem_alloc_pool`, `mem_build_map`
 - [efi_file.asm](efi_file.md) — `mem_alloc_pool`
 - [efi_proto.asm](efi_proto.md) — `mem_alloc_pool`
+- [efi_var.asm](efi_var.md) — `mem_alloc_pages`
 - [init64.asm](init64.md) — `mem_alloc_pages`
 - [pe.asm](pe.md) — `mem_alloc_pages`
 - [smbios.asm](smbios.md) — `mem_alloc_pages`

@@ -1,5 +1,5 @@
 # fw.asm
-[`src/fw.asm`](../../../src/fw.asm) — 70 lines, 1 entry points.
+[`src/fw.asm`](../../../src/fw.asm) — 71 lines, 1 entry points.
 
 The flash volume.
 
@@ -9,7 +9,7 @@ One flat binary, assembled at its final address. The layout is fixed by the arch
 
 | Name | Line | Contract |
 | --- | --- | --- |
-| `reset_vector` | [68](../../../src/fw.asm#L68) | — |
+| `reset_vector` | [69](../../../src/fw.asm#L69) | — |
 
 ## Dependencies
 

@@ -201,6 +201,7 @@ dxe_main:
 
     call    efi_init
     puts    msg_efi_ok
+    call    var_init
 
     ; After efi_init: publishing the RSDP means writing the system table,
     ; which does not exist until the tables have been built.

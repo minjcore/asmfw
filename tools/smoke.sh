@@ -86,6 +86,7 @@ check_fw() {
     want "$log" "[DXE] EFI tables built, protocols published"
     want "$log" "[DXE] ACPI: 4 tables"
     want "$log" "[DXE] SMBIOS 2.8, 8 structures"
+    want "$log" "[DXE] variables: 32 slots"
     want "$log" "[DXE] done"
     want "$log" "[BDS] EFI system partition at LBA"
     want "$log" "[BDS] FAT32 volume mounted"
@@ -97,6 +98,7 @@ check_fw() {
     want "$log" "every one of them checksums to zero"
     want "$log" "structures walked to the end marker; entry point checksums to zero"
     want "$log" "system: QEMU Standard PC (i440FX + PIIX, 1996)"
+    want "$log" "appended to, found among 1 by enumeration, deleted"
     want "$log" "graphics output protocol located; drawing"
     want "$log" "ConIn"
     want "$log" "[BDS] image returned, status 0000000000000000"
@@ -170,6 +172,7 @@ check_ovmf() {
     # No structure count here: OVMF adds a type 0 of its own when QEMU
     # supplies none, so it walks one more than asmfw does, correctly.
     want "$log" "structures walked to the end marker; entry point checksums to zero"
+    want "$log" "refused a change of attributes, appended to, found among"
     want "$log" "graphics output protocol located; drawing"
 
     log=$LOGS/ovmfk.log

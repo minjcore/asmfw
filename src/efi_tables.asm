@@ -418,12 +418,12 @@ rt_template:
     dq  rt_unsupported                          ; ConvertPointer
     dq  rt_get_variable
     dq  rt_get_next_variable_name
-    dq  rt_unsupported                          ; SetVariable
+    dq  rt_set_variable
     dq  rt_unsupported                          ; GetNextHighMonotonicCount
     dq  rt_reset_system
     dq  rt_unsupported                          ; UpdateCapsule
     dq  rt_unsupported                          ; QueryCapsuleCapabilities
-    dq  rt_unsupported                          ; QueryVariableInfo
+    dq  rt_query_variable_info
 
 ; ----------------------------------------------------------------------------
 align 8

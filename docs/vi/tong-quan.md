@@ -136,7 +136,8 @@ Phần này quan trọng, vì nó là thứ làm cho những phần còn lại �
 - **FAT32 chỉ đọc, chỉ tên ngắn 8.3.**
 - **Không `LoadImage`/`StartImage`** — BDS nạp đúng một image mà nó boot.
 - **Một ổ ATA duy nhất**, primary master, PIO, LBA28.
-- **Không Secure Boot**, không variable store, không setup UI.
+- **Biến UEFI nằm trong RAM** — 32 ô, mất khi reset; không có ghi có xác thực.
+- **Không Secure Boot**, không setup UI.
 - Phía kernel: round robin không ưu tiên, console chỉ text, một keystroke được
   giao ở tick tiếp theo chứ không tức thì (tối đa 10 ms).
 

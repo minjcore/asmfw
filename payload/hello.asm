@@ -110,6 +110,20 @@ ST_CONOUT           equ 0x40
 ST_BOOTSERVICES     equ 0x60
 ST_NUMTABLEENTRIES  equ 0x68
 ST_CONFIGTABLE      equ 0x70
+ST_RUNTIMESERVICES  equ 0x58
+
+; Runtime services, the variable calls.
+RT_GETVARIABLE      equ 0x48
+RT_GETNEXTVARNAME   equ 0x50
+RT_SETVARIABLE      equ 0x58
+VAR_BS_RT           equ 0x06            ; boot service and runtime access
+VAR_BS_ONLY         equ 0x02
+VAR_APPEND          equ 0x40
+EFI_INVALID_PARAMETER equ 0x8000000000000002
+VBUF_SIZE           equ 64
+NBUF_SIZE           equ 512
+EFI_BUFFER_TOO_SMALL equ 0x8000000000000005
+EFI_NOT_FOUND       equ 0x800000000000000E
 
 ; EFI_CONFIGURATION_TABLE: a GUID, then the address it stands for.
 GUID_SIZE           equ 16
@@ -283,6 +297,7 @@ efi_main:
 .acpi:
             call    show_acpi
             call    show_smbios
+            call    show_vars
 
 .graphics:
             ; --- graphics ---------------------------------------------------
@@ -724,6 +739,213 @@ show_smbios:
             ret
 
 ; ----------------------------------------------------------------------------
+; show_vars -- the variable services, end to end: set one, read it back with a
+; buffer too small and then with one large enough, find it by enumerating
+; every variable, delete it, and confirm it is gone.
+;
+; Each step has a wrong answer that would look right on its own. A store that
+; ignored DataSize would pass the full read and fail the short one; a walk
+; that never reached the end would never report EFI_NOT_FOUND; a delete that
+; did nothing would leave the last read succeeding.
+; ----------------------------------------------------------------------------
+show_vars:
+            push    rbx
+            push    rsi
+            push    rdi
+            push    r12
+            push    r13
+            push    rbp
+            sub     rsp, 40                     ; shadow space, and a fifth argument
+
+            mov     rbx, [rel g_st]
+            mov     rbx, [rbx + ST_RUNTIMESERVICES]
+            mov     ebp, 1                      ; the step, for the failure message
+
+            ; --- 1: set -----------------------------------------------------
+            lea     rcx, [rel s_var_name]
+            lea     rdx, [rel var_guid]
+            mov     r8d, VAR_BS_RT
+            mov     r9d, VAR_DATA_LEN
+            lea     rax, [rel var_data]
+            mov     [rsp + 0x20], rax
+            call    [rbx + RT_SETVARIABLE]
+            test    rax, rax
+            jnz     .fail
+
+            ; --- 2: a read that cannot fit, which must say how much it needs --
+            inc     ebp
+            mov     qword [rel g_vsize], 1
+            lea     rcx, [rel s_var_name]
+            lea     rdx, [rel var_guid]
+            lea     r8, [rel g_vattr]
+            lea     r9, [rel g_vsize]
+            lea     rax, [rel g_vbuf]
+            mov     [rsp + 0x20], rax
+            call    [rbx + RT_GETVARIABLE]
+            mov     rcx, EFI_BUFFER_TOO_SMALL
+            cmp     rax, rcx
+            jne     .fail
+            cmp     qword [rel g_vsize], VAR_DATA_LEN
+            jne     .fail
+
+            ; --- 3: the real read -------------------------------------------
+            inc     ebp
+            mov     qword [rel g_vsize], VBUF_SIZE
+            lea     rcx, [rel s_var_name]
+            lea     rdx, [rel var_guid]
+            lea     r8, [rel g_vattr]
+            lea     r9, [rel g_vsize]
+            lea     rax, [rel g_vbuf]
+            mov     [rsp + 0x20], rax
+            call    [rbx + RT_GETVARIABLE]
+            test    rax, rax
+            jnz     .fail
+            cmp     qword [rel g_vsize], VAR_DATA_LEN
+            jne     .fail
+            cmp     dword [rel g_vattr], VAR_BS_RT
+            jne     .fail
+            lea     rsi, [rel var_data]
+            lea     rdi, [rel g_vbuf]
+            mov     ecx, VAR_DATA_LEN
+            repe    cmpsb
+            jne     .fail
+
+            ; --- 4: other attributes on the same variable must be refused ------
+            inc     ebp
+            lea     rcx, [rel s_var_name]
+            lea     rdx, [rel var_guid]
+            mov     r8d, VAR_BS_ONLY
+            mov     r9d, VAR_DATA_LEN
+            lea     rax, [rel var_data]
+            mov     [rsp + 0x20], rax
+            call    [rbx + RT_SETVARIABLE]
+            mov     rcx, EFI_INVALID_PARAMETER
+            cmp     rax, rcx
+            jne     .fail
+
+            ; --- 5: append one byte, and read the longer value back -----------
+            inc     ebp
+            lea     rcx, [rel s_var_name]
+            lea     rdx, [rel var_guid]
+            mov     r8d, VAR_BS_RT | VAR_APPEND
+            mov     r9d, 1
+            lea     rax, [rel var_tail]
+            mov     [rsp + 0x20], rax
+            call    [rbx + RT_SETVARIABLE]
+            test    rax, rax
+            jnz     .fail
+            mov     qword [rel g_vsize], VBUF_SIZE
+            lea     rcx, [rel s_var_name]
+            lea     rdx, [rel var_guid]
+            xor     r8d, r8d
+            lea     r9, [rel g_vsize]
+            lea     rax, [rel g_vbuf]
+            mov     [rsp + 0x20], rax
+            call    [rbx + RT_GETVARIABLE]
+            test    rax, rax
+            jnz     .fail
+            cmp     qword [rel g_vsize], VAR_DATA_LEN + 1
+            jne     .fail
+            mov     al, [rel var_tail]
+            cmp     [rel g_vbuf + VAR_DATA_LEN], al
+            jne     .fail
+
+            ; --- 6: enumerate, to the end, and find it on the way ---------------
+            inc     ebp
+            mov     word [rel g_nbuf], 0
+            xor     r12d, r12d                  ; how many variables
+            xor     r13d, r13d                  ; whether ours was among them
+.walk:
+            mov     qword [rel g_nsize], NBUF_SIZE
+            lea     rcx, [rel g_nsize]
+            lea     rdx, [rel g_nbuf]
+            lea     r8, [rel g_nguid]
+            call    [rbx + RT_GETNEXTVARNAME]
+            mov     rcx, EFI_NOT_FOUND
+            cmp     rax, rcx
+            je      .walked
+            test    rax, rax
+            jnz     .fail
+            inc     r12d
+            lea     rsi, [rel var_guid]
+            lea     rdi, [rel g_nguid]
+            call    guid_eq
+            jne     .walk
+            lea     rsi, [rel s_var_name]
+            lea     rdi, [rel g_nbuf]
+.name:
+            mov     ax, [rsi]
+            cmp     ax, [rdi]
+            jne     .walk
+            add     rsi, 2
+            add     rdi, 2
+            test    ax, ax
+            jnz     .name
+            inc     r13d
+            jmp     .walk
+.walked:
+            test    r13d, r13d
+            jz      .fail
+
+            ; --- 7: delete, and see it gone -----------------------------------
+            inc     ebp
+            lea     rcx, [rel s_var_name]
+            lea     rdx, [rel var_guid]
+            mov     r8d, VAR_BS_RT
+            xor     r9d, r9d
+            mov     qword [rsp + 0x20], 0
+            call    [rbx + RT_SETVARIABLE]
+            test    rax, rax
+            jnz     .fail
+            inc     ebp
+            mov     qword [rel g_vsize], VBUF_SIZE
+            lea     rcx, [rel s_var_name]
+            lea     rdx, [rel var_guid]
+            xor     r8d, r8d
+            lea     r9, [rel g_vsize]
+            lea     rax, [rel g_vbuf]
+            mov     [rsp + 0x20], rax
+            call    [rbx + RT_GETVARIABLE]
+            mov     rcx, EFI_NOT_FOUND
+            cmp     rax, rcx
+            jne     .fail
+
+            lea     rdx, [rel s_var_ok]
+            call    out_w
+            mov     eax, r12d
+            call    out_dec
+            lea     rdx, [rel s_var_ok2]
+            call    out_w
+            jmp     .done
+
+.fail:
+            mov     r12, rax                    ; the status, whatever it was
+            lea     rdx, [rel s_var_fail]
+            call    out_w
+            mov     eax, ebp
+            call    out_dec
+            lea     rdx, [rel s_var_status]
+            call    out_w
+            mov     rax, r12
+            lea     rdi, [rel g_strbuf]
+            mov     ecx, 16
+            call    hex_to_str
+            mov     word [rdi + 32], 0
+            mov     rdx, rdi
+            call    out_w
+            lea     rdx, [rel s_crlf]
+            call    out_w
+.done:
+            add     rsp, 40
+            pop     rbp
+            pop     r13
+            pop     r12
+            pop     rdi
+            pop     rsi
+            pop     rbx
+            ret
+
+; ----------------------------------------------------------------------------
 ; smbios_string -- RSI = a structure, AL = a 1-based string number.
 ; Returns RSI = that string, or a pointer to an empty one if it is absent.
 ; ----------------------------------------------------------------------------
@@ -997,6 +1219,17 @@ smbios3_guid:                               ; F2FD1544-9794-4A2C-992E-E5BBCF20E3
             dw 0x4A2C
             db 0x99, 0x2E, 0xE5, 0xBB, 0xCF, 0x20, 0xE3, 0x94
 
+var_guid:                                   ; a GUID of this payload's own
+            dd 0x6A5F1D2E
+            dw 0x3B4C
+            dw 0x4D5E
+            db 0x8F, 0x90, 0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6
+
+var_data:   db "asmfw keeps this in RAM"
+VAR_DATA_LEN equ $ - var_data
+var_tail:   db "!"
+            align 8
+
 gop_guid:
             dd 0x9042A9DE
             dw 0x23DC
@@ -1023,6 +1256,13 @@ g_smb_sys:  dq 0
 g_smb_major: dd 0
 g_smb_minor: dd 0
 g_strbuf:   times STRBUF_CHARS + 1 dw 0
+            align 8
+g_vsize:    dq 0
+g_nsize:    dq 0
+g_vattr:    dd 0, 0
+g_nguid:    times 16 db 0
+g_vbuf:     times VBUF_SIZE db 0
+g_nbuf:     times NBUF_SIZE db 0
 s_empty_a:  dw 0                            ; read as a byte string; a word,
                                             ; so the CHAR16 strings after it
                                             ; stay 2-byte aligned, as UEFI
@@ -1044,6 +1284,11 @@ WSTR s_acpi_bad, `  at least one of them has a bad checksum\r\n`
 WSTR s_acpi_none, `  no ACPI configuration table on this firmware\r\n`
 WSTR s_crlf,     `\r\n`
 WSTR s_smb,      `  SMBIOS `
+WSTR s_var_name, `AsmfwPayloadTest`
+WSTR s_var_ok,   `  variables: set, read back short and whole, refused a change of attributes, appended to, found among `
+WSTR s_var_ok2,  ` by enumeration, deleted\r\n`
+WSTR s_var_fail, `  variables: step `
+WSTR s_var_status, ` went wrong, status 0x`
 WSTR s_dot,      `.`
 WSTR s_colon,    `: `
 WSTR s_space,    ` `

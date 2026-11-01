@@ -155,8 +155,11 @@ Firmware này hiện thực **những gì một boot loader thật sự gọi**,
   `LocateProtocol`, `OpenProtocol`, `LocateHandle`, `LocateHandleBuffer`), ba lệnh
   event mà `ConIn` cần, cộng `InstallConfigurationTable`, `Stall`, `CopyMem`,
   `SetMem`, `CalculateCrc32`, `Exit`, `ExitBootServices`.
-- **Runtime Services**: `GetTime` đọc RTC thật, `ResetSystem` reset thật. Variable
-  store báo rỗng, vì không có store nào.
+- **Runtime Services**: `GetTime` đọc RTC thật, `ResetSystem` reset thật, và bốn
+  hàm biến (`GetVariable`, `SetVariable`, `GetNextVariableName`,
+  `QueryVariableInfo`) trên 32 ô cố định trong RAM. Không có gì sống qua một lần
+  reset: biến non-volatile vẫn được nhận và giữ trong suốt lần boot đó, giống
+  OVMF khi build không có variable store.
 - **Protocol công bố**: Simple Text Output (đầy đủ, kể cả `SetAttribute`), Simple
   Text Input, Graphics Output (một mode, `Blt` đủ bốn phép), Simple File System,
   File, Block I/O, Loaded Image.

@@ -110,7 +110,7 @@ một mức).
 **Control:** cho payload `LoadImage` một bản copy của chính nó và chạy; nó phải
 in banner hai lần rồi trả về sạch.
 
-### 1.4 Variable store trong RAM
+### 1.4 Variable store trong RAM — ✅ đã xong (2026-11-01)
 
 **Đã có:** `GetVariable` và `GetNextVariableName` — nhưng chỉ báo store rỗng.
 **Chưa có:** `SetVariable` (đã kiểm: không tồn tại), và không có nơi lưu.
@@ -121,6 +121,14 @@ biến không có `NON_VOLATILE`.
 **Vì sao:** rất nhiều loader thật ghi rồi đọc lại biến của chính mình; hiện chúng
 nhận `EFI_UNSUPPORTED` và có thể bỏ cuộc.
 **Control:** payload ghi một biến, đọc lại, so sánh — và chạy y hệt dưới OVMF.
+**Đã làm:** `src/efi_var.asm` — 32 record 2 KiB trong `EfiRuntimeServicesData`;
+`GetVariable`, `SetVariable` (tạo, thay, append, xoá; đổi thuộc tính bị từ chối;
+ghi có xác thực trả `EFI_UNSUPPORTED`), `GetNextVariableName`,
+`QueryVariableInfo`; sau `ExitBootServices` biến không có `RUNTIME_ACCESS` bị
+ẩn. Payload chạy bảy bước: ghi, đọc với buffer thiếu (phải trả
+`EFI_BUFFER_TOO_SMALL` kèm kích thước cần), đọc đủ, ghi với thuộc tính khác (phải
+bị từ chối), append một byte, liệt kê tới hết và tìm thấy biến của mình, xoá rồi
+đọc lại phải `EFI_NOT_FOUND`. Dưới OVMF: y hệt, liệt kê ra 25 biến thay vì 1.
 
 ---
 
@@ -185,6 +193,7 @@ Những gì còn thiếu, cụ thể và không nhiều:
 | --- | --- |
 | `LoadedImage->LoadOptions` = cmdline | đang gán `0`, cùng `LoadOptionsSize = 0` |
 | `LoadedImage->FilePath` | đang gán `0` — stub dùng nó để tìm initrd cùng thư mục |
+| bảng Runtime Services và biến toàn cục phải sống sau `ExitBootServices` | **chưa**: phát hiện khi làm 1.4 — `mem_build_map` báo cả vùng `G_BASE`..`FW_HEAP_BASE` (globals, stack, `FW_TABLES` chứa bảng RT) là `EfiBootServicesData`, nên kernel được phép ghi đè. Code RT chạy từ ROM nên không sao, nhưng bảng RT và mọi `g_*` nó đọc thì có. Kho biến đã cấp đúng loại `EfiRuntimeServicesData`; con trỏ tới nó (`g_var_store`) thì chưa |
 | memory map phải thật chính xác | `mem_build_map` đã ghi đúng loại theo yêu cầu của người gọi |
 | RSDP trong configuration table | đã có, dưới cả GUID 1.0 và 2.0 |
 | GOP | đã có, một mode |

@@ -282,7 +282,7 @@ function preserves what it uses unless noted.
 | --- | --- |
 | [efi_tables.asm](src/efi_tables.asm) | `efi_init`, `efi_publish_volume`, `efi_fix_crc`, `crc32` (RSI, ECX → EAX), `proto_add` (RAX = handle, RSI = GUID, RDI = interface), `proto_find`; the templates and GUIDs |
 | [efi_bs.asm](src/efi_bs.asm) | every boot service, `proto_collect`, `kbd_peek`, `bs_unsupported` |
-| [efi_rt.asm](src/efi_rt.asm) | `rt_get_time`, `rtc_decode`, `rt_get_variable`, `rt_get_next_variable_name`, `rt_reset_system`, `rt_unsupported` |
+| [efi_rt.asm](src/efi_rt.asm) | `rt_get_time`, `rtc_decode`, `rt_reset_system`, `rt_unsupported` |
 | [efi_proto.asm](src/efi_proto.asm) | `to_*` (text output), `ti_*` (text input), `kbd_init`, `kbd_poll`, `gop_*`, `efi_palette`, `scancode_ascii` |
 | [efi_file.asm](src/efi_file.asm) | `sfs_open_volume`, `file_new`, `file_open`, `file_read`, `file_get_info`, `file_set_position`, `name_to_83`, `name_from_83`, `bio_*` |
 
@@ -348,8 +348,13 @@ code instead of a fault.
 
 ### 4.3 Runtime services
 
-`GetTime` (off the RTC, via `rtc_decode`) and `ResetSystem` are real.
-`GetVariable` and `GetNextVariableName` report an empty store — there is none.
+`GetTime` (off the RTC, via `rtc_decode`) and `ResetSystem` are real. The
+variable services are in `efi_var.asm`: 32 fixed records of 2 KiB in runtime
+services data, each a GUID, attributes, a CHAR16 name of up to 256 bytes and
+up to 1760 bytes of data. Deletion is `Attributes` = 0 or `DataSize` = 0
+without `APPEND_WRITE`; an existing variable keeps its attributes, and a write
+with different ones is `EFI_INVALID_PARAMETER`; after `ExitBootServices` a
+variable without `RUNTIME_ACCESS` is invisible.
 Everything else, `SetVirtualAddressMap` included, is `rt_unsupported`, so
 runtime services remain valid only at their physical addresses.
 

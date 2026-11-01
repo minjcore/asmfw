@@ -1,5 +1,5 @@
 # init64.asm
-[`src/init64.asm`](../../../src/init64.asm) — 454 lines, 17 entry points.
+[`src/init64.asm`](../../../src/init64.asm) — 455 lines, 17 entry points.
 
 The firmware's phase sequence once long mode is live.
 
@@ -14,18 +14,18 @@ SEC  establish a C-like environment: stack, zeroed globals, serial PEI  size RAM
 | `mem_size_ram` | [91](../../../src/init64.asm#L91) | highest usable byte below 4 GiB, from the CMOS size fields QEMU (and every PC BIOS since) publishes. |
 | `cmos_read` | [137](../../../src/init64.asm#L137) | AL = register index, returns AL. NMI stays masked for the duration of the access, which is what every other CMOS user expects. |
 | `dxe_main` | [150](../../../src/init64.asm#L150) | — |
-| `bds_main` | [218](../../../src/init64.asm#L218) | — |
-| `image_exit_resume` | [338](../../../src/init64.asm#L338) | — |
-| `bds_err_no_media` | [350](../../../src/init64.asm#L350) | — |
-| `bds_err_no_esp` | [352](../../../src/init64.asm#L352) | — |
-| `bds_err_no_fs` | [354](../../../src/init64.asm#L354) | — |
-| `bds_err_no_file` | [356](../../../src/init64.asm#L356) | — |
-| `bds_err_no_mem` | [358](../../../src/init64.asm#L358) | — |
-| `bds_err_read_error` | [360](../../../src/init64.asm#L360) | — |
-| `bds_err_pe_error` | [362](../../../src/init64.asm#L362) | — |
-| `bds_failed` | [368](../../../src/init64.asm#L368) | — |
-| `bds_done` | [370](../../../src/init64.asm#L370) | — |
-| `bds_publish_image` | [383](../../../src/init64.asm#L383) | fill in EFI_LOADED_IMAGE_PROTOCOL and register it |
+| `bds_main` | [219](../../../src/init64.asm#L219) | — |
+| `image_exit_resume` | [339](../../../src/init64.asm#L339) | — |
+| `bds_err_no_media` | [351](../../../src/init64.asm#L351) | — |
+| `bds_err_no_esp` | [353](../../../src/init64.asm#L353) | — |
+| `bds_err_no_fs` | [355](../../../src/init64.asm#L355) | — |
+| `bds_err_no_file` | [357](../../../src/init64.asm#L357) | — |
+| `bds_err_no_mem` | [359](../../../src/init64.asm#L359) | — |
+| `bds_err_read_error` | [361](../../../src/init64.asm#L361) | — |
+| `bds_err_pe_error` | [363](../../../src/init64.asm#L363) | — |
+| `bds_failed` | [369](../../../src/init64.asm#L369) | — |
+| `bds_done` | [371](../../../src/init64.asm#L371) | — |
+| `bds_publish_image` | [384](../../../src/init64.asm#L384) | fill in EFI_LOADED_IMAGE_PROTOCOL and register it |
 
 ## Definitions
 
@@ -39,6 +39,7 @@ Calls into:
 - [ata.asm](ata.md) — `ata_init`
 - [efi_proto.asm](efi_proto.md) — `kbd_init`
 - [efi_tables.asm](efi_tables.md) — `efi_init`, `efi_publish_volume`, `proto_add`
+- [efi_var.asm](efi_var.md) — `var_init`
 - [fat.asm](fat.md) — `fat_lookup`, `fat_mount`, `fat_read_file`
 - [gpt.asm](gpt.md) — `part_find_esp`
 - [mem.asm](mem.md) — `mem_alloc_pages`

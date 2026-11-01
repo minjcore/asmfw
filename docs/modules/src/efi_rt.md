@@ -1,9 +1,9 @@
 # efi_rt.asm
-[`src/efi_rt.asm`](../../../src/efi_rt.asm) — 209 lines, 6 entry points.
+[`src/efi_rt.asm`](../../../src/efi_rt.asm) — 194 lines, 4 entry points.
 
 Runtime services.
 
-These are the services that outlive ExitBootServices. This firmware keeps them honest but small: a real clock, no variable store, and a reset that actually resets. SetVirtualAddressMap is not supported, so the table stays valid only at its physical address.
+These are the services that outlive ExitBootServices. This firmware keeps them honest but small: a real clock, a reset that actually resets, and the variable services, which live in efi_var.asm. SetVirtualAddressMap is not supported, so the table stays valid only at its physical address.
 
 ## Entry points
 
@@ -12,9 +12,7 @@ These are the services that outlive ExitBootServices. This firmware keeps them h
 | `rt_unsupported` | [16](../../../src/efi_rt.asm#L16) | — |
 | `rt_get_time` | [37](../../../src/efi_rt.asm#L37) | — |
 | `rtc_decode` | [139](../../../src/efi_rt.asm#L139) | EDI = raw CMOS byte, ESI = status register B. Returns AL as a binary value, converting from BCD when bit 2 says to. |
-| `rt_get_variable` | [161](../../../src/efi_rt.asm#L161) | — |
-| `rt_get_next_variable_name` | [165](../../../src/efi_rt.asm#L165) | — |
-| `rt_reset_system` | [175](../../../src/efi_rt.asm#L175) | — |
+| `rt_reset_system` | [160](../../../src/efi_rt.asm#L160) | — |
 
 ## Definitions
 
