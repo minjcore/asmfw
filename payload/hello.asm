@@ -128,6 +128,28 @@ SIG_LENGTH          equ 4
 RSDT_ENTRY_SIZE     equ 4
 XSDT_ENTRY_SIZE     equ 8
 
+; SMBIOS entry points, both kinds, and the structures they point at.
+SM2_LENGTH          equ 0x05
+SM2_MAJOR           equ 0x06
+SM2_MINOR           equ 0x07
+SM2_DMI             equ 0x10
+SM2_DMI_LENGTH      equ 15
+SM2_TABLE_LEN       equ 0x16
+SM2_TABLE_ADDR      equ 0x18
+SM3_LENGTH          equ 0x06
+SM3_MAJOR           equ 0x07
+SM3_MINOR           equ 0x08
+SM3_TABLE_MAX       equ 0x0C
+SM3_TABLE_ADDR      equ 0x10
+SMS_TYPE            equ 0
+SMS_LENGTH          equ 1
+SMS_HEADER_SIZE     equ 4
+SMS_TYPE_SYSTEM     equ 1
+SMS_TYPE_END        equ 127
+SMS1_MANUFACTURER   equ 4                   ; string numbers, in type 1
+SMS1_PRODUCT        equ 5
+STRBUF_CHARS        equ 80
+
 TO_OUTPUTSTRING     equ 0x08
 TO_SETATTRIBUTE     equ 0x28
 TO_CLEARSCREEN      equ 0x30
@@ -260,6 +282,7 @@ efi_main:
 
 .acpi:
             call    show_acpi
+            call    show_smbios
 
 .graphics:
             ; --- graphics ---------------------------------------------------
@@ -542,6 +565,322 @@ show_acpi:
             ret
 
 ; ----------------------------------------------------------------------------
+; show_smbios -- find the SMBIOS entry point through the configuration table,
+; check its checksums, walk every structure to the end marker, and name the
+; system from the type 1 structure.
+;
+; The firmware's part is small but every piece of it is checkable from here:
+; the entry point's table address is the one field QEMU leaves for firmware
+; to fill in, and filling it in invalidates the checksums. A firmware that
+; skips either step leaves a pointer to nothing, or a sum that is not zero.
+; The 3.x anchor is preferred where both exist, as a 64-bit reader would.
+; ----------------------------------------------------------------------------
+show_smbios:
+            push    rbx
+            push    rsi
+            push    rdi
+            push    r12
+            push    r13
+            push    rbp
+            sub     rsp, 40
+
+            lea     rsi, [rel smbios3_guid]
+            call    find_config
+            test    rax, rax
+            jnz     .v3
+            lea     rsi, [rel smbios_guid]
+            call    find_config
+            test    rax, rax
+            jz      .none
+
+            ; --- 2.x: "_SM_", two checksums, a 32-bit address and a length ----
+            mov     rbp, rax
+            cmp     dword [rbp], '_SM_'
+            jne     .malformed
+            mov     rsi, rbp
+            movzx   ecx, byte [rbp + SM2_LENGTH]
+            call    sum_bytes
+            test    al, al
+            jnz     .bad_sum
+            lea     rsi, [rbp + SM2_DMI]
+            mov     ecx, SM2_DMI_LENGTH
+            call    sum_bytes
+            test    al, al
+            jnz     .bad_sum
+            mov     r12d, [rbp + SM2_TABLE_ADDR]
+            movzx   r13d, word [rbp + SM2_TABLE_LEN]
+            movzx   eax, byte [rbp + SM2_MAJOR]
+            movzx   edx, byte [rbp + SM2_MINOR]
+            jmp     .walk
+
+            ; --- 3.x: "_SM3_", one checksum, a 64-bit address and a bound ---
+.v3:
+            mov     rbp, rax
+            cmp     dword [rbp], '_SM3'
+            jne     .malformed
+            cmp     byte [rbp + 4], '_'
+            jne     .malformed
+            mov     rsi, rbp
+            movzx   ecx, byte [rbp + SM3_LENGTH]
+            call    sum_bytes
+            test    al, al
+            jnz     .bad_sum
+            mov     r12, [rbp + SM3_TABLE_ADDR]
+            mov     r13d, [rbp + SM3_TABLE_MAX]
+            movzx   eax, byte [rbp + SM3_MAJOR]
+            movzx   edx, byte [rbp + SM3_MINOR]
+
+.walk:
+            mov     [rel g_smb_major], eax
+            mov     [rel g_smb_minor], edx
+            test    r12, r12
+            jz      .torn
+            add     r13, r12                    ; one past the end
+            xor     ebx, ebx                    ; structures seen
+            mov     qword [rel g_smb_sys], 0
+.structure:
+            lea     rax, [r12 + SMS_HEADER_SIZE]
+            cmp     rax, r13
+            ja      .torn
+            inc     ebx
+            mov     dil, [r12 + SMS_TYPE]
+            cmp     dil, SMS_TYPE_SYSTEM
+            jne     .not_system
+            mov     [rel g_smb_sys], r12
+.not_system:
+            movzx   eax, byte [r12 + SMS_LENGTH]
+            cmp     eax, SMS_HEADER_SIZE
+            jb      .torn
+            add     r12, rax
+.strings:
+            lea     rax, [r12 + 1]
+            cmp     rax, r13
+            jae     .torn
+            cmp     word [r12], 0
+            je      .strings_end
+            inc     r12
+            jmp     .strings
+.strings_end:
+            add     r12, 2
+            cmp     dil, SMS_TYPE_END
+            jne     .structure
+
+            ; --- the verdict ------------------------------------------------
+            lea     rdx, [rel s_smb]
+            call    out_w
+            mov     eax, [rel g_smb_major]
+            call    out_dec
+            lea     rdx, [rel s_dot]
+            call    out_w
+            mov     eax, [rel g_smb_minor]
+            call    out_dec
+            lea     rdx, [rel s_colon]
+            call    out_w
+            mov     eax, ebx
+            call    out_dec
+            lea     rdx, [rel s_smb_ok]
+            call    out_w
+
+            mov     rbp, [rel g_smb_sys]
+            test    rbp, rbp
+            jz      .done
+            lea     rdx, [rel s_smb_sys]
+            call    out_w
+            mov     rsi, rbp
+            mov     al, [rbp + SMS1_MANUFACTURER]
+            call    smbios_string
+            call    out_ascii
+            lea     rdx, [rel s_space]
+            call    out_w
+            mov     rsi, rbp
+            mov     al, [rbp + SMS1_PRODUCT]
+            call    smbios_string
+            call    out_ascii
+            lea     rdx, [rel s_crlf]
+            call    out_w
+            jmp     .done
+
+.none:
+            lea     rdx, [rel s_smb_none]
+            jmp     .say
+.malformed:
+            lea     rdx, [rel s_smb_malformed]
+            jmp     .say
+.bad_sum:
+            lea     rdx, [rel s_smb_bad_sum]
+            jmp     .say
+.torn:
+            lea     rdx, [rel s_smb_torn]
+.say:
+            call    out_w
+.done:
+            add     rsp, 40
+            pop     rbp
+            pop     r13
+            pop     r12
+            pop     rdi
+            pop     rsi
+            pop     rbx
+            ret
+
+; ----------------------------------------------------------------------------
+; smbios_string -- RSI = a structure, AL = a 1-based string number.
+; Returns RSI = that string, or a pointer to an empty one if it is absent.
+; ----------------------------------------------------------------------------
+smbios_string:
+            push    rax
+            push    rcx
+            movzx   ecx, al
+            test    ecx, ecx
+            jz      .absent
+            movzx   eax, byte [rsi + SMS_LENGTH]
+            add     rsi, rax
+.find:
+            cmp     byte [rsi], 0
+            je      .absent                     ; the set ended first
+            dec     ecx
+            jz      .found
+.skip:
+            inc     rsi
+            cmp     byte [rsi - 1], 0
+            jne     .skip
+            jmp     .find
+.absent:
+            lea     rsi, [rel s_empty_a]
+.found:
+            pop     rcx
+            pop     rax
+            ret
+
+; ----------------------------------------------------------------------------
+; find_config -- RSI = a GUID. Returns RAX = the configuration table entry's
+; pointer, or 0 if the firmware published no table under that GUID.
+; ----------------------------------------------------------------------------
+find_config:
+            push    rcx
+            push    rdi
+            mov     rax, [rel g_st]
+            mov     rcx, [rax + ST_NUMTABLEENTRIES]
+            mov     rdi, [rax + ST_CONFIGTABLE]
+.next:
+            test    rcx, rcx
+            jz      .miss
+            call    guid_eq
+            je      .hit
+            add     rdi, CFG_ENTRY_SIZE
+            dec     rcx
+            jmp     .next
+.hit:
+            mov     rax, [rdi + CFG_TABLE_PTR]
+            jmp     .done
+.miss:
+            xor     eax, eax
+.done:
+            pop     rdi
+            pop     rcx
+            ret
+
+; ----------------------------------------------------------------------------
+; sum_bytes -- RSI = start, ECX = length. Returns AL = their sum.
+; ----------------------------------------------------------------------------
+sum_bytes:
+            push    rcx
+            push    rsi
+            xor     eax, eax
+            test    ecx, ecx
+            jz      .done
+.byte:
+            add     al, [rsi]
+            inc     rsi
+            dec     ecx
+            jnz     .byte
+.done:
+            pop     rsi
+            pop     rcx
+            ret
+
+; ----------------------------------------------------------------------------
+; out_w -- RDX = a CHAR16 string, written through ConOut. Preserves every
+; register, so a caller can print between steps without saving its own.
+; ----------------------------------------------------------------------------
+out_w:
+            push    rax
+            push    rcx
+            push    rdx
+            push    r8
+            push    r9
+            push    r10
+            push    r11
+            sub     rsp, 32
+            mov     rcx, [rel g_st]
+            mov     rcx, [rcx + ST_CONOUT]
+            call    [rcx + TO_OUTPUTSTRING]
+            add     rsp, 32
+            pop     r11
+            pop     r10
+            pop     r9
+            pop     r8
+            pop     rdx
+            pop     rcx
+            pop     rax
+            ret
+
+; ----------------------------------------------------------------------------
+; out_ascii -- RSI = a NUL-terminated byte string. Widened into g_strbuf, cut
+; at STRBUF_CHARS, and written.
+; ----------------------------------------------------------------------------
+out_ascii:
+            push    rax
+            push    rcx
+            push    rdx
+            push    rsi
+            lea     rdx, [rel g_strbuf]
+            xor     ecx, ecx
+.next:
+            movzx   eax, byte [rsi + rcx]
+            test    eax, eax
+            jz      .end
+            mov     [rdx + rcx*2], ax
+            inc     ecx
+            cmp     ecx, STRBUF_CHARS
+            jb      .next
+.end:
+            mov     word [rdx + rcx*2], 0
+            call    out_w
+            pop     rsi
+            pop     rdx
+            pop     rcx
+            pop     rax
+            ret
+
+; ----------------------------------------------------------------------------
+; out_dec -- EAX = an unsigned value, written in decimal.
+; ----------------------------------------------------------------------------
+out_dec:
+            push    rax
+            push    rcx
+            push    rdx
+            push    rdi
+            lea     rdi, [rel g_strbuf + STRBUF_CHARS*2]
+            mov     word [rdi], 0
+            mov     ecx, 10
+.digit:
+            xor     edx, edx
+            div     ecx
+            add     edx, '0'
+            sub     rdi, 2
+            mov     [rdi], dx
+            test    eax, eax
+            jnz     .digit
+            mov     rdx, rdi
+            call    out_w
+            pop     rdi
+            pop     rdx
+            pop     rcx
+            pop     rax
+            ret
+
+; ----------------------------------------------------------------------------
 ; sig_to_str -- RSI = a table. Spells its four signature bytes, and a trailing
 ; space, into g_sigbuf as CHAR16.
 ; ----------------------------------------------------------------------------
@@ -646,6 +985,18 @@ acpi20_guid:                                ; 8868E871-E4F1-11D3-BC22-0080C73C88
             dw 0x11D3
             db 0xBC, 0x22, 0x00, 0x80, 0xC7, 0x3C, 0x88, 0x81
 
+smbios_guid:                                ; EB9D2D31-2D88-11D3-9A16-0090273FC14D
+            dd 0xEB9D2D31
+            dw 0x2D88
+            dw 0x11D3
+            db 0x9A, 0x16, 0x00, 0x90, 0x27, 0x3F, 0xC1, 0x4D
+
+smbios3_guid:                               ; F2FD1544-9794-4A2C-992E-E5BBCF20E394
+            dd 0xF2FD1544
+            dw 0x9794
+            dw 0x4A2C
+            db 0x99, 0x2E, 0xE5, 0xBB, 0xCF, 0x20, 0xE3, 0x94
+
 gop_guid:
             dd 0x9042A9DE
             dw 0x23DC
@@ -668,6 +1019,14 @@ g_readlen:  dq 0
 g_readbuf:  dq 0
 g_acpi_bad: dq 0
 g_sigbuf:   times SIG_LENGTH + 2 dw 0
+g_smb_sys:  dq 0
+g_smb_major: dd 0
+g_smb_minor: dd 0
+g_strbuf:   times STRBUF_CHARS + 1 dw 0
+s_empty_a:  dw 0                            ; read as a byte string; a word,
+                                            ; so the CHAR16 strings after it
+                                            ; stay 2-byte aligned, as UEFI
+                                            ; requires and OVMF enforces
 g_key:      dw 0, 0                         ; one EFI_INPUT_KEY
 
 WSTR s_banner,  `\r\n  hello from a hand-assembled UEFI application\r\n\r\n`
@@ -684,6 +1043,16 @@ WSTR s_acpi_ok,  `  every one of them checksums to zero\r\n`
 WSTR s_acpi_bad, `  at least one of them has a bad checksum\r\n`
 WSTR s_acpi_none, `  no ACPI configuration table on this firmware\r\n`
 WSTR s_crlf,     `\r\n`
+WSTR s_smb,      `  SMBIOS `
+WSTR s_dot,      `.`
+WSTR s_colon,    `: `
+WSTR s_space,    ` `
+WSTR s_smb_ok,   ` structures walked to the end marker; entry point checksums to zero\r\n`
+WSTR s_smb_sys,  `  system: `
+WSTR s_smb_none, `  no SMBIOS configuration table on this firmware\r\n`
+WSTR s_smb_malformed, `  the SMBIOS entry point has no signature it should have\r\n`
+WSTR s_smb_bad_sum,   `  the SMBIOS entry point has a bad checksum\r\n`
+WSTR s_smb_torn, `  the SMBIOS structures run off the end of their table\r\n`
 WSTR s_no_key,   `  nothing typed in three seconds; ConIn said EFI_NOT_READY throughout\r\n`
 WSTR s_no_conin, `  no simple text input protocol on this firmware\r\n`
 

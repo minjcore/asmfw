@@ -27,15 +27,16 @@ The firmware in flash ROM. Narrative: REFERENCE.md §3.
 | [efi_rt.asm](src/efi_rt.md) | 209 | 6 | Runtime services |
 | [efi_tables.asm](src/efi_tables.md) | 486 | 7 | Build the structures an EFI image is handed |
 | [fat.asm](src/fat.md) | 456 | 8 | Enough FAT32 to find and read one file |
-| [fw.asm](src/fw.md) | 69 | 1 | The flash volume |
+| [fw.asm](src/fw.md) | 70 | 1 | The flash volume |
 | [gpt.asm](src/gpt.md) | 168 | 1 | Find the EFI system partition |
 | [init16.asm](src/init16.md) | 66 | 2 | SEC phase, part 1 |
 | [init32.asm](src/init32.md) | 74 | 1 | SEC phase, part 2 |
-| [init64.asm](src/init64.md) | 452 | 17 | The firmware's phase sequence once long mode is live |
+| [init64.asm](src/init64.md) | 454 | 17 | The firmware's phase sequence once long mode is live |
 | [mem.asm](src/mem.md) | 210 | 3 | The page allocator behind AllocatePages, and the memory map |
 | [pci.asm](src/pci.md) | 345 | 7 | Type 1 PCI configuration access and a minimal device scan |
 | [pe.asm](src/pe.md) | 322 | 2 | The PE32+ loader |
 | [serial.asm](src/serial.md) | 59 | 2 | 16550 UART on COM1, the firmware's debug spine |
+| [smbios.asm](src/smbios.md) | 307 | 3 | The SMBIOS tables QEMU describes through fw_cfg |
 | [timer.asm](src/timer.md) | 109 | 2 | Delays, measured against the 8254 |
 | [util.asm](src/util.md) | 201 | 12 | Console output primitives and memory helpers |
 | [vbe.asm](src/vbe.md) | 219 | 4 | Bring up a linear framebuffer without a VGA option ROM |
@@ -85,8 +86,8 @@ The UEFI application the firmware boots to test itself. Narrative: REFERENCE.md 
 
 | File | Lines | Entry points | Purpose |
 | --- | --- | --- | --- |
-| [hello.asm](payload/hello.md) | 698 | 7 | A UEFI application, PE32+ headers and all, in one flat binary |
+| [hello.asm](payload/hello.md) | 1067 | 14 | A UEFI application, PE32+ headers and all, in one flat binary |
 
 ---
 
-44 modules. The narrative documentation is in `REFERENCE.md`; the same tables in Vietnamese are in [../vi/modules/](../vi/modules/README.md).
+45 modules. The narrative documentation is in `REFERENCE.md`; the same tables in Vietnamese are in [../vi/modules/](../vi/modules/README.md).

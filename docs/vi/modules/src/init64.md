@@ -1,5 +1,5 @@
 # init64.asm
-[`src/init64.asm`](../../../../src/init64.asm) — 452 dòng, 17 entry point.
+[`src/init64.asm`](../../../../src/init64.asm) — 454 dòng, 17 entry point.
 
 The firmware's phase sequence once long mode is live.
 
@@ -14,18 +14,18 @@ SEC  establish a C-like environment: stack, zeroed globals, serial PEI  size RAM
 | `mem_size_ram` | [91](../../../../src/init64.asm#L91) | highest usable byte below 4 GiB, from the CMOS size fields QEMU (and every PC BIOS since) publishes. |
 | `cmos_read` | [137](../../../../src/init64.asm#L137) | AL = register index, returns AL. NMI stays masked for the duration of the access, which is what every other CMOS user expects. |
 | `dxe_main` | [150](../../../../src/init64.asm#L150) | — |
-| `bds_main` | [216](../../../../src/init64.asm#L216) | — |
-| `image_exit_resume` | [336](../../../../src/init64.asm#L336) | — |
-| `bds_err_no_media` | [348](../../../../src/init64.asm#L348) | — |
-| `bds_err_no_esp` | [350](../../../../src/init64.asm#L350) | — |
-| `bds_err_no_fs` | [352](../../../../src/init64.asm#L352) | — |
-| `bds_err_no_file` | [354](../../../../src/init64.asm#L354) | — |
-| `bds_err_no_mem` | [356](../../../../src/init64.asm#L356) | — |
-| `bds_err_read_error` | [358](../../../../src/init64.asm#L358) | — |
-| `bds_err_pe_error` | [360](../../../../src/init64.asm#L360) | — |
-| `bds_failed` | [366](../../../../src/init64.asm#L366) | — |
-| `bds_done` | [368](../../../../src/init64.asm#L368) | — |
-| `bds_publish_image` | [381](../../../../src/init64.asm#L381) | fill in EFI_LOADED_IMAGE_PROTOCOL and register it |
+| `bds_main` | [218](../../../../src/init64.asm#L218) | — |
+| `image_exit_resume` | [338](../../../../src/init64.asm#L338) | — |
+| `bds_err_no_media` | [350](../../../../src/init64.asm#L350) | — |
+| `bds_err_no_esp` | [352](../../../../src/init64.asm#L352) | — |
+| `bds_err_no_fs` | [354](../../../../src/init64.asm#L354) | — |
+| `bds_err_no_file` | [356](../../../../src/init64.asm#L356) | — |
+| `bds_err_no_mem` | [358](../../../../src/init64.asm#L358) | — |
+| `bds_err_read_error` | [360](../../../../src/init64.asm#L360) | — |
+| `bds_err_pe_error` | [362](../../../../src/init64.asm#L362) | — |
+| `bds_failed` | [368](../../../../src/init64.asm#L368) | — |
+| `bds_done` | [370](../../../../src/init64.asm#L370) | — |
+| `bds_publish_image` | [383](../../../../src/init64.asm#L383) | fill in EFI_LOADED_IMAGE_PROTOCOL and register it |
 
 ## Định nghĩa
 
@@ -45,6 +45,7 @@ Gọi vào:
 - [pci.asm](pci.md) — `pci_assign_resources`
 - [pe.asm](pe.md) — `pe_error_string`, `pe_load`
 - [serial.asm](serial.md) — `ser_init`
+- [smbios.asm](smbios.md) — `smbios_init`
 - [util.asm](util.md) — `con_putc`, `con_putdec`, `con_puthex64`, `con_puts`, `panic`
 - [vbe.asm](vbe.md) — `gfx_init`
 

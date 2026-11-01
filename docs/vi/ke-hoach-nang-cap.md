@@ -61,7 +61,7 @@ số theo từng file, nhiều nhất trước: `src/efi_bs.asm` 27, `efi_file.a
 Đây là nhóm có tỉ lệ tốt nhất: mỗi việc gỡ một dòng trong mục "Limitations", và
 phần khó nhất của mỗi việc **đã được viết rồi**.
 
-### 1.1 SMBIOS entry point
+### 1.1 SMBIOS entry point — ✅ đã xong (2026-11-01)
 
 **Đã có:** toàn bộ client fw_cfg (`fwcfg_init/find/select/read`), và cơ chế cài
 configuration table (`bs_install_configuration_table`) — cả hai đang được dùng
@@ -72,6 +72,15 @@ cho ACPI.
 anchor vào configuration table dưới GUID SMBIOS3.
 **Công sức:** nhỏ — cùng khuôn với `acpi_init`, không có script nào phải chạy.
 **Control:** OVMF cũng công bố SMBIOS; cho payload in ra vài field và so hai bên.
+**Đã làm:** `src/smbios.asm` — đặt anchor và bảng vào một vùng
+`EfiRuntimeServicesData`, điền địa chỉ, tính lại checksum (một cái cho `_SM3_`,
+hai cái cho `_SM_` vì phần `_DMI_` có checksum riêng), cài dưới GUID tương ứng.
+QEMU 11 với `-machine pc` cấp anchor 2.8; đã thử cả nhánh 3.0 bằng
+`smbios-entry-point-type=64`. Payload kiểm checksum anchor, đi hết các structure
+tới type 127, và in hãng + sản phẩm từ type 1. Dưới OVMF: cùng các dòng đó, 9
+structure thay vì 8 — OVMF tự thêm type 0. Control còn bắt được một lỗi thật
+trong chính payload: một chuỗi byte lẻ chèn trước các chuỗi CHAR16 làm chúng lệch
+căn 2 byte; asmfw không để ý, OVMF treo trong `Open()`.
 
 ### 1.2 FAT32 tên dài (LFN)
 

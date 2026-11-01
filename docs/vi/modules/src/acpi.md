@@ -39,6 +39,7 @@ Gọi vào:
 Bị gọi bởi:
 
 - [init64.asm](init64.md) — `acpi_init`
+- [smbios.asm](smbios.md) — `fwcfg_find`, `fwcfg_read`, `fwcfg_select`
 
 ---
 

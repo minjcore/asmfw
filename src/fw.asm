@@ -42,6 +42,7 @@
 %include "fat.asm"
 %include "pe.asm"
 %include "acpi.asm"
+%include "smbios.asm"
 %include "efi_tables.asm"
 %include "efi_bs.asm"
 %include "efi_rt.asm"

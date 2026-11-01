@@ -27,6 +27,7 @@ Bị gọi bởi:
 - [efi_proto.asm](efi_proto.md) — `mem_alloc_pool`
 - [init64.asm](init64.md) — `mem_alloc_pages`
 - [pe.asm](pe.md) — `mem_alloc_pages`
+- [smbios.asm](smbios.md) — `mem_alloc_pages`
 
 ---
 

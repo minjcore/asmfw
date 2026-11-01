@@ -127,7 +127,10 @@ Phần này quan trọng, vì nó là thứ làm cho những phần còn lại �
 - **Không bao giờ giải phóng bộ nhớ.** `AllocatePages` là một con trỏ bump;
   `FreePages` và `FreePool` trả về thành công rồi không làm gì. Firmware cấp phát
   vài lần rồi giao máy đi, nên free list sẽ là thêm code mà không có ai dùng.
-- **Có ACPI, không có SMBIOS.**
+- **ACPI và SMBIOS đều lấy nguyên từ QEMU.** SMBIOS được đặt vào bộ nhớ, anchor
+  được điền địa chỉ và tính lại checksum, rồi công bố dưới GUID SMBIOS hoặc
+  SMBIOS3 tuỳ chữ ký. Không thêm structure nào: OVMF tự thêm type 0 khi QEMU
+  không cấp, firmware này thì không, nên ít hơn OVMF một structure.
 - **Không có `SetVirtualAddressMap`** — runtime services chỉ còn hợp lệ ở địa chỉ
   vật lý.
 - **FAT32 chỉ đọc, chỉ tên ngắn 8.3.**

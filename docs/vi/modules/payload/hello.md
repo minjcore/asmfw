@@ -1,5 +1,5 @@
 # hello.asm
-[`payload/hello.asm`](../../../../payload/hello.asm) — 698 dòng, 7 entry point.
+[`payload/hello.asm`](../../../../payload/hello.asm) — 1067 dòng, 14 entry point.
 
 A UEFI application, PE32+ headers and all, in one flat binary.
 
@@ -9,21 +9,28 @@ This exists to test the firmware, so it is deliberately not built with a linker:
 
 | Tên | Dòng | Hợp đồng |
 | --- | --- | --- |
-| `efi_main` | [173](../../../../payload/hello.asm#L173) | — |
-| `draw_bar` | [357](../../../../payload/hello.asm#L357) | paint a horizontal gradient across the bottom of the screen, straight into the framebuffer the GOP handed over. |
-| `show_acpi` | [426](../../../../payload/hello.asm#L426) | find the ACPI tables through the configuration table, name each one, and check that it still checksums to zero. This is the part of the payload that tests the firmware hardest. QEMU hands firmware ACPI blobs whose cross-references are offsets, not addresses, and a script saying which ones to patch and which checksums to redo afterwards. Firmware that runs the script produces tables that sum to zero and point at each other; firmware that skips it produces tables that do neither. Walking the XSDT here reads every pointer the script was supposed to fix. |
-| `sig_to_str` | [548](../../../../payload/hello.asm#L548) | RSI = a table. Spells its four signature bytes, and a trailing space, into g_sigbuf as CHAR16. |
-| `sum_table` | [571](../../../../payload/hello.asm#L571) | RSI = a table. Returns AL = the sum of its bytes, which the specification requires to be zero. |
-| `hex_to_str` | [593](../../../../payload/hello.asm#L593) | RAX = value, RDI = where to write it as CHAR16, ECX = digits. Most significant first, over the placeholder in a message. |
-| `guid_eq` | [628](../../../../payload/hello.asm#L628) | RSI and RDI point at GUIDs. ZF set if they match. |
+| `efi_main` | [195](../../../../payload/hello.asm#L195) | — |
+| `draw_bar` | [380](../../../../payload/hello.asm#L380) | paint a horizontal gradient across the bottom of the screen, straight into the framebuffer the GOP handed over. |
+| `show_acpi` | [449](../../../../payload/hello.asm#L449) | find the ACPI tables through the configuration table, name each one, and check that it still checksums to zero. This is the part of the payload that tests the firmware hardest. QEMU hands firmware ACPI blobs whose cross-references are offsets, not addresses, and a script saying which ones to patch and which checksums to redo afterwards. Firmware that runs the script produces tables that sum to zero and point at each other; firmware that skips it produces tables that do neither. Walking the XSDT here reads every pointer the script was supposed to fix. |
+| `show_smbios` | [578](../../../../payload/hello.asm#L578) | find the SMBIOS entry point through the configuration table, check its checksums, walk every structure to the end marker, and name the system from the type 1 structure. The firmware's part is small but every piece of it is checkable from here: the entry point's table address is the one field QEMU leaves for firmware to fill in, and filling it in invalidates the checksums. A firmware that skips either step leaves a pointer to nothing, or a sum that is not zero. The 3.x anchor is preferred where both exist, as a 64-bit reader would. |
+| `smbios_string` | [730](../../../../payload/hello.asm#L730) | RSI = a structure, AL = a 1-based string number. Returns RSI = that string, or a pointer to an empty one if it is absent. |
+| `find_config` | [759](../../../../payload/hello.asm#L759) | RSI = a GUID. Returns RAX = the configuration table entry's pointer, or 0 if the firmware published no table under that GUID. |
+| `sum_bytes` | [786](../../../../payload/hello.asm#L786) | RSI = start, ECX = length. Returns AL = their sum. |
+| `out_w` | [806](../../../../payload/hello.asm#L806) | RDX = a CHAR16 string, written through ConOut. Preserves every register, so a caller can print between steps without saving its own. |
+| `out_ascii` | [832](../../../../payload/hello.asm#L832) | RSI = a NUL-terminated byte string. Widened into g_strbuf, cut at STRBUF_CHARS, and written. |
+| `out_dec` | [859](../../../../payload/hello.asm#L859) | EAX = an unsigned value, written in decimal. |
+| `sig_to_str` | [887](../../../../payload/hello.asm#L887) | RSI = a table. Spells its four signature bytes, and a trailing space, into g_sigbuf as CHAR16. |
+| `sum_table` | [910](../../../../payload/hello.asm#L910) | RSI = a table. Returns AL = the sum of its bytes, which the specification requires to be zero. |
+| `hex_to_str` | [932](../../../../payload/hello.asm#L932) | RAX = value, RDI = where to write it as CHAR16, ECX = digits. Most significant first, over the placeholder in a message. |
+| `guid_eq` | [967](../../../../payload/hello.asm#L967) | RSI and RDI point at GUIDs. ZF set if they match. |
 
 ## Định nghĩa
 
 Macro: `WSTR`
 
-Hằng số: 51.
+Hằng số: 71.
 
-Dữ liệu và state: `pe_signature`, `opt_start`, `opt_end`, `acpi20_guid`, `gop_guid`, `sfs_guid`, `g_image`, `g_st`, `g_gop`, `g_sfs`, `g_root`, `g_file`, `g_readlen`, `g_readbuf`, `g_acpi_bad`, `g_sigbuf`, `g_key`, `s_key`, và 2 nữa
+Dữ liệu và state: `pe_signature`, `opt_start`, `opt_end`, `acpi20_guid`, `smbios_guid`, `smbios3_guid`, `gop_guid`, `sfs_guid`, `g_image`, `g_st`, `g_gop`, `g_sfs`, `g_root`, `g_file`, `g_readlen`, `g_readbuf`, `g_acpi_bad`, `g_sigbuf`, và 9 nữa
 
 ---
 

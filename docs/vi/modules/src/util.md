@@ -41,6 +41,7 @@ Bị gọi bởi:
 - [init64.asm](init64.md) — `con_putc`, `con_putdec`, `con_puthex64`, `con_puts`, `panic`
 - [macros.inc](macros.md) — `con_puts`
 - [pe.asm](pe.md) — `mem_copy`, `mem_set`
+- [smbios.asm](smbios.md) — `con_putc`, `con_putdec`, `con_puthex64`
 - [vbe.asm](vbe.md) — `con_putc`, `con_puthex16`
 
 ---

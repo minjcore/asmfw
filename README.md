@@ -35,6 +35,7 @@ make check    # boot both disks, and both controls, and assert the log
          tell the keyboard controller to translate to scan code set 1
          build the EFI System Table, Boot Services, Runtime Services
          run QEMU's ACPI loader script and publish the RSDP
+         place QEMU's SMBIOS tables, patch the anchor, publish it
     |
    BDS   find the EFI system partition (GPT, or MBR type 0xEF)
          mount FAT32, walk to \EFI\BOOT\BOOTX64.EFI
@@ -92,6 +93,7 @@ src/
   fat.asm           FAT32 reader
   pe.asm            PE32+ loader and base relocation
   acpi.asm          fw_cfg, and the ACPI tables QEMU describes through it
+  smbios.asm        the SMBIOS entry point and tables, also through fw_cfg
   efi_tables.asm    the table templates, CRCs, protocol database
   efi_bs.asm        boot services
   efi_rt.asm        runtime services
@@ -249,10 +251,13 @@ applied to something considerably easier to get subtly wrong.
 - **Nothing is ever freed.** `AllocatePages` is a bump pointer; `FreePages` and
   `FreePool` succeed and do nothing. The firmware allocates a handful of times
   and then hands the machine over.
-- **ACPI, but no SMBIOS.** The tables QEMU describes through `fw_cfg` are
-  built and the RSDP goes into the configuration table under both the ACPI 1.0
-  and 2.0 GUIDs. `etc/smbios` is not read, so there is no SMBIOS entry point.
-  The loader script's `WRITE_POINTER` command is skipped as well: it writes
+- **ACPI and SMBIOS come from QEMU, as built.** The ACPI tables QEMU describes
+  through `fw_cfg` are placed and the RSDP goes into the configuration table
+  under both the ACPI 1.0 and 2.0 GUIDs. The SMBIOS tables are placed as QEMU
+  built them, the anchor gets its address and checksums, and it is published
+  under the SMBIOS or SMBIOS3 GUID to match its signature. No structure is
+  added: OVMF supplies a type 0 when QEMU does not, and this firmware does not,
+  so it publishes one fewer. The ACPI loader script's `WRITE_POINTER` command is skipped as well: it writes
   back into `fw_cfg`, which only matters to features this firmware does not
   expose.
 - **No `SetVirtualAddressMap`.** Runtime services stay valid only at their

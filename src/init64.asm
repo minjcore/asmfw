@@ -205,6 +205,8 @@ dxe_main:
     ; After efi_init: publishing the RSDP means writing the system table,
     ; which does not exist until the tables have been built.
     call    acpi_init
+    ; After acpi_init, which reads the fw_cfg directory this looks names up in.
+    call    smbios_init
 
     puts    msg_dxe_ok
     pop     rax

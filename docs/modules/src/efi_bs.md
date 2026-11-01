@@ -56,6 +56,7 @@ Calls into:
 Called by:
 
 - [acpi.asm](acpi.md) — `bs_install_configuration_table`
+- [smbios.asm](smbios.md) — `bs_install_configuration_table`
 
 ---
 

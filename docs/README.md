@@ -22,7 +22,7 @@ duplicated here. They answer different questions:
 | [modules/](modules/README.md) | one file per source file — 44 of them, mirroring the source tree |
 | [vi/modules/](vi/modules/README.md) | the same 44, with Vietnamese labels |
 | [generate.py](generate.py) | regenerates both trees above from the sources |
-| [verify.py](verify.py) | checks all 698 claims in both trees against the sources |
+| [verify.py](verify.py) | checks all 722 claims in both trees against the sources |
 | [vi/](vi/README.md) | tài liệu tiếng Việt — the same system, explained rather than tabulated |
 
 Each module file carries the source file's own banner comment, a table of entry
@@ -40,7 +40,7 @@ python3 docs/verify.py
 
 Every row names a symbol and the line it is defined on, and a line number is the
 one kind of documentation that rots without any sign of it — a label moves, the
-link still resolves, the row still looks right. `verify.py` re-derives all 698
+link still resolves, the row still looks right. `verify.py` re-derives all 722
 claims and names the ones that have drifted:
 
 ```
