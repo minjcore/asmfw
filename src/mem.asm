@@ -43,6 +43,15 @@ MD_PAGES            equ 0x18
 MD_ATTR             equ 0x20
 MD_SIZE             equ 48
 
+; What of the firmware's own fixed region survives ExitBootServices: the pages
+; holding the globals, and the first page of FW_TABLES, which holds the system
+; table, runtime services, configuration table and vendor string.
+MAP_GLOBAL_PAGES    equ (GOFF_TOTAL + 0xFFF) >> 12
+MAP_TABLE_PAGES     equ 1
+%if EFI_VENDOR_STR + 0x80 > FW_TABLES + MAP_TABLE_PAGES * 4096
+  %error "the runtime tables have outgrown the page reported for them"
+%endif
+
 ; ----------------------------------------------------------------------------
 ; mem_alloc_pages -- RCX = page count, EDX = EFI memory type.
 ; Returns RAX = base address, or 0 if the heap is exhausted.
@@ -143,8 +152,28 @@ mem_build_map:
     call    .emit
 
     ; --- firmware globals, stack and EFI structures -----------------------
+    ; Two pieces of this outlive ExitBootServices and must be reported so an
+    ; OS keeps them: the globals the runtime services read (g_bs_exited,
+    ; g_var_store), and the page holding the system table, the runtime
+    ; services table and the configuration table. The stack and the rest of
+    ; FW_TABLES are boot services data, and an OS may have them back.
     mov     rax, G_BASE
-    mov     rcx, (FW_HEAP_BASE - G_BASE) >> 12
+    mov     rcx, MAP_GLOBAL_PAGES
+    mov     edx, EfiRuntimeServicesData
+    mov     r8, EFI_MEMORY_WB | EFI_MEMORY_RUNTIME
+    call    .emit
+    mov     rax, G_BASE + MAP_GLOBAL_PAGES * 4096
+    mov     rcx, (FW_TABLES - G_BASE) / 4096 - MAP_GLOBAL_PAGES
+    mov     edx, EfiBootServicesData
+    mov     r8, EFI_MEMORY_WB
+    call    .emit
+    mov     rax, FW_TABLES
+    mov     rcx, MAP_TABLE_PAGES
+    mov     edx, EfiRuntimeServicesData
+    mov     r8, EFI_MEMORY_WB | EFI_MEMORY_RUNTIME
+    call    .emit
+    mov     rax, FW_TABLES + MAP_TABLE_PAGES * 4096
+    mov     rcx, (FW_HEAP_BASE - FW_TABLES) / 4096 - MAP_TABLE_PAGES
     mov     edx, EfiBootServicesData
     mov     r8, EFI_MEMORY_WB
     call    .emit
@@ -161,6 +190,15 @@ mem_build_map:
     mov     rcx, [rsi + 8]
     mov     edx, [rsi + 16]
     mov     r8, EFI_MEMORY_WB
+    ; Runtime types carry the runtime attribute, which is what tells an OS
+    ; to map the range for runtime calls rather than merely leave it alone.
+    cmp     edx, EfiRuntimeServicesCode
+    je      .runtime
+    cmp     edx, EfiRuntimeServicesData
+    jne     .typed
+.runtime:
+    mov     r8, EFI_MEMORY_WB | EFI_MEMORY_RUNTIME
+.typed:
     call    .emit
     add     rsi, ALLOC_REC_SIZE
     dec     r10d
@@ -172,11 +210,21 @@ mem_build_map:
     and     rax, -4096
     mov     rcx, [abs g_heap_end]
     sub     rcx, rax
-    jbe     .done
+    jbe     .flash
     shr     rcx, 12
-    jz      .done
+    jz      .flash
     mov     edx, EfiConventionalMemory
     mov     r8, EFI_MEMORY_WB
+    call    .emit
+
+.flash:
+    ; --- the flash, last because it is highest -----------------------------
+    ; The runtime services' code executes from here, in place, so it is
+    ; memory-mapped I/O that an OS has to map for runtime calls.
+    mov     rax, FV_BASE
+    mov     rcx, FV_SIZE >> 12
+    mov     edx, EfiMemoryMappedIO
+    mov     r8, EFI_MEMORY_UC | EFI_MEMORY_RUNTIME
     call    .emit
 
 .done:

@@ -33,7 +33,7 @@ The firmware in flash ROM. Narrative: REFERENCE.md §3.
 | [init16.asm](src/init16.md) | 66 | 2 | SEC phase, part 1 |
 | [init32.asm](src/init32.md) | 74 | 1 | SEC phase, part 2 |
 | [init64.asm](src/init64.md) | 455 | 17 | The firmware's phase sequence once long mode is live |
-| [mem.asm](src/mem.md) | 210 | 3 | The page allocator behind AllocatePages, and the memory map |
+| [mem.asm](src/mem.md) | 258 | 3 | The page allocator behind AllocatePages, and the memory map |
 | [pci.asm](src/pci.md) | 345 | 7 | Type 1 PCI configuration access and a minimal device scan |
 | [pe.asm](src/pe.md) | 322 | 2 | The PE32+ loader |
 | [serial.asm](src/serial.md) | 59 | 2 | 16550 UART on COM1, the firmware's debug spine |
@@ -88,7 +88,7 @@ The UEFI application the firmware boots to test itself. Narrative: REFERENCE.md 
 
 | File | Lines | Entry points | Purpose |
 | --- | --- | --- | --- |
-| [hello.asm](payload/hello.md) | 1312 | 15 | A UEFI application, PE32+ headers and all, in one flat binary |
+| [hello.asm](payload/hello.md) | 1496 | 18 | A UEFI application, PE32+ headers and all, in one flat binary |
 
 ---
 

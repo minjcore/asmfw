@@ -1,5 +1,5 @@
 # mem.asm
-[`src/mem.asm`](../../../src/mem.asm) — 210 lines, 3 entry points.
+[`src/mem.asm`](../../../src/mem.asm) — 258 lines, 3 entry points.
 
 The page allocator behind AllocatePages, and the memory map.
 
@@ -9,13 +9,13 @@ A bump allocator. Nothing is ever freed, which is a real limitation and a delibe
 
 | Name | Line | Contract |
 | --- | --- | --- |
-| `mem_alloc_pages` | [50](../../../src/mem.asm#L50) | RCX = page count, EDX = EFI memory type. Returns RAX = base address, or 0 if the heap is exhausted. |
-| `mem_alloc_pool` | [103](../../../src/mem.asm#L103) | RCX = byte count, EDX = EFI memory type. Returns RAX = base, or 0. Pool allocations come out of the same bump heap rounded to whole pages. Wasteful per call, and irrelevant at the handful of calls this sees. |
-| `mem_build_map` | [118](../../../src/mem.asm#L118) | write the current memory map into MEMMAP_SCRATCH. Returns EAX = number of descriptors written. The descriptors come out in ascending address order, which the spec does not require but every consumer is happier with. |
+| `mem_alloc_pages` | [59](../../../src/mem.asm#L59) | RCX = page count, EDX = EFI memory type. Returns RAX = base address, or 0 if the heap is exhausted. |
+| `mem_alloc_pool` | [112](../../../src/mem.asm#L112) | RCX = byte count, EDX = EFI memory type. Returns RAX = base, or 0. Pool allocations come out of the same bump heap rounded to whole pages. Wasteful per call, and irrelevant at the handful of calls this sees. |
+| `mem_build_map` | [127](../../../src/mem.asm#L127) | write the current memory map into MEMMAP_SCRATCH. Returns EAX = number of descriptors written. The descriptors come out in ascending address order, which the spec does not require but every consumer is happier with. |
 
 ## Definitions
 
-Constants: 11.
+Constants: 13.
 
 ## Dependencies
 

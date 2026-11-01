@@ -112,6 +112,21 @@ ST_NUMTABLEENTRIES  equ 0x68
 ST_CONFIGTABLE      equ 0x70
 ST_RUNTIMESERVICES  equ 0x58
 
+BS_GETMEMORYMAP     equ 0x38
+BS_ALLOCATEPOOL     equ 0x40
+BS_FREEPOOL         equ 0x48
+RT_GETTIME          equ 0x18
+EfiLoaderData       equ 2
+MM_BUF_SIZE         equ 16384
+MD_TYPE             equ 0x00
+MD_PHYS             equ 0x08
+MD_PAGES            equ 0x18
+MD_ATTR             equ 0x20
+MD_RUNTIME_BIT      equ 63
+EfiRuntimeServicesCode equ 5
+EfiRuntimeServicesData equ 6
+EfiMemoryMappedIO   equ 11
+
 ; Runtime services, the variable calls.
 RT_GETVARIABLE      equ 0x48
 RT_GETNEXTVARNAME   equ 0x50
@@ -298,6 +313,7 @@ efi_main:
             call    show_acpi
             call    show_smbios
             call    show_vars
+            call    show_memmap
 
 .graphics:
             ; --- graphics ---------------------------------------------------
@@ -946,6 +962,161 @@ show_vars:
             ret
 
 ; ----------------------------------------------------------------------------
+; show_memmap -- ask for the memory map, and check that what an OS will still
+; need after ExitBootServices is described as runtime memory: the system
+; table, the runtime services table, and the code behind one of its entries.
+;
+; Described any other way, an OS is entitled to reuse the memory, and nothing
+; would go wrong until the first runtime call after it had.
+; ----------------------------------------------------------------------------
+show_memmap:
+            push    rbx
+            push    rsi
+            push    rdi
+            push    r12
+            push    r13
+            push    rbp
+            sub     rsp, 40
+
+            mov     rsi, [rel g_st]
+            mov     rsi, [rsi + ST_BOOTSERVICES]
+            mov     ecx, EfiLoaderData
+            mov     edx, MM_BUF_SIZE
+            lea     r8, [rel g_mm]
+            call    [rsi + BS_ALLOCATEPOOL]
+            test    rax, rax
+            jnz     .no_map
+
+            mov     qword [rel g_mmsize], MM_BUF_SIZE
+            lea     rcx, [rel g_mmsize]
+            mov     rdx, [rel g_mm]
+            lea     r8, [rel g_mmkey]
+            lea     r9, [rel g_mmdsize]
+            lea     rax, [rel g_mmver]
+            mov     [rsp + 0x20], rax
+            call    [rsi + BS_GETMEMORYMAP]
+            test    rax, rax
+            jnz     .no_map
+
+            ; The system table and the runtime services table: data.
+            lea     rdx, [rel s_mm_st]
+            mov     rax, [rel g_st]
+            call    find_desc
+            call    is_runtime_data
+            jne     .wrong
+            lea     rdx, [rel s_mm_rt]
+            mov     rax, [rel g_st]
+            mov     rax, [rax + ST_RUNTIMESERVICES]
+            mov     rbp, rax
+            call    find_desc
+            call    is_runtime_data
+            jne     .wrong
+
+            ; GetTime's code: runtime code in RAM, or flash mapped for runtime.
+            lea     rdx, [rel s_mm_code]
+            mov     rax, [rbp + RT_GETTIME]
+            call    find_desc
+            test    rax, rax
+            jz      .wrong
+            bt      qword [rax + MD_ATTR], MD_RUNTIME_BIT
+            jnc     .wrong
+            mov     ecx, [rax + MD_TYPE]
+            cmp     ecx, EfiRuntimeServicesCode
+            je      .right
+            cmp     ecx, EfiMemoryMappedIO
+            jne     .wrong
+.right:
+            lea     rdx, [rel s_mm_ok]
+            call    out_w
+            mov     rax, [rel g_mmsize]
+            xor     edx, edx
+            div     qword [rel g_mmdsize]
+            call    out_dec
+            lea     rdx, [rel s_mm_ok2]
+            call    out_w
+            jmp     .free
+.wrong:
+            mov     rbx, rdx                    ; which one
+            lea     rdx, [rel s_mm_bad]
+            call    out_w
+            mov     rdx, rbx
+            call    out_w
+            lea     rdx, [rel s_mm_bad2]
+            call    out_w
+.free:
+            mov     rsi, [rel g_st]
+            mov     rsi, [rsi + ST_BOOTSERVICES]
+            mov     rcx, [rel g_mm]
+            call    [rsi + BS_FREEPOOL]
+            jmp     .done
+.no_map:
+            lea     rdx, [rel s_mm_none]
+            call    out_w
+.done:
+            add     rsp, 40
+            pop     rbp
+            pop     r13
+            pop     r12
+            pop     rdi
+            pop     rsi
+            pop     rbx
+            ret
+
+; ----------------------------------------------------------------------------
+; find_desc -- RAX = an address. Returns RAX = the memory map descriptor that
+; covers it, or 0. Walks g_mm by the descriptor size the firmware reported.
+; ----------------------------------------------------------------------------
+find_desc:
+            push    rcx
+            push    rdx
+            push    rsi
+            push    rdi
+            mov     rdi, rax
+            mov     rsi, [rel g_mm]
+            mov     rcx, rsi
+            add     rcx, [rel g_mmsize]
+.next:
+            cmp     rsi, rcx
+            jae     .miss
+            mov     rax, [rsi + MD_PHYS]
+            cmp     rdi, rax
+            jb      .skip
+            mov     rdx, [rsi + MD_PAGES]
+            shl     rdx, 12
+            add     rax, rdx
+            cmp     rdi, rax
+            jb      .hit
+.skip:
+            add     rsi, [rel g_mmdsize]
+            jmp     .next
+.miss:
+            xor     eax, eax
+            jmp     .done
+.hit:
+            mov     rax, rsi
+.done:
+            pop     rdi
+            pop     rsi
+            pop     rdx
+            pop     rcx
+            ret
+
+; ----------------------------------------------------------------------------
+; is_runtime_data -- RAX = a descriptor or 0. ZF set if it is runtime services
+; data carrying the runtime attribute.
+; ----------------------------------------------------------------------------
+is_runtime_data:
+            test    rax, rax
+            jz      .no
+            bt      qword [rax + MD_ATTR], MD_RUNTIME_BIT
+            jnc     .no
+            cmp     dword [rax + MD_TYPE], EfiRuntimeServicesData
+            ret
+.no:
+            or      eax, 1                      ; clears ZF
+            ret
+
+; ----------------------------------------------------------------------------
 ; smbios_string -- RSI = a structure, AL = a 1-based string number.
 ; Returns RSI = that string, or a pointer to an empty one if it is absent.
 ; ----------------------------------------------------------------------------
@@ -1258,6 +1429,11 @@ g_smb_minor: dd 0
 g_strbuf:   times STRBUF_CHARS + 1 dw 0
             align 8
 g_vsize:    dq 0
+g_mm:       dq 0
+g_mmsize:   dq 0
+g_mmkey:    dq 0
+g_mmdsize:  dq 0
+g_mmver:    dd 0, 0
 g_nsize:    dq 0
 g_vattr:    dd 0, 0
 g_nguid:    times 16 db 0
@@ -1285,6 +1461,14 @@ WSTR s_acpi_none, `  no ACPI configuration table on this firmware\r\n`
 WSTR s_crlf,     `\r\n`
 WSTR s_smb,      `  SMBIOS `
 WSTR s_var_name, `AsmfwPayloadTest`
+WSTR s_mm_ok,    `  memory map: `
+WSTR s_mm_ok2,   ` descriptors; the system table, runtime services and their code are runtime memory\r\n`
+WSTR s_mm_bad,   `  memory map: `
+WSTR s_mm_bad2,  ` is not described as runtime memory\r\n`
+WSTR s_mm_st,    `the system table`
+WSTR s_mm_rt,    `the runtime services table`
+WSTR s_mm_code,  `GetTime's code`
+WSTR s_mm_none,  `  memory map: GetMemoryMap or AllocatePool failed\r\n`
 WSTR s_var_ok,   `  variables: set, read back short and whole, refused a change of attributes, appended to, found among `
 WSTR s_var_ok2,  ` by enumeration, deleted\r\n`
 WSTR s_var_fail, `  variables: step `

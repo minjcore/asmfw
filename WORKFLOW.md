@@ -72,7 +72,7 @@ produced it and why it is correct.
 ## 3. Boot it, and check the log
 
 ```
-make check          both disks, then the same two under OVMF   -- 63 assertions
+make check          both disks, then the same two under OVMF   -- 65 assertions
 make check-fw       the firmware and the payload it boots
 make check-kernel   the kernel only
 make check-docs     every line number in the module docs against the source

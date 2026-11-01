@@ -183,8 +183,8 @@ everything it owns is either inside its own image or allocated through
 
 | Allocation | Pages | Why through boot services |
 | --- | --- | --- |
-| page tables | `PT_ALLOC_PAGES` = 6 × (`TASK_COUNT`+1) = 30 | so the inherited memory map already accounts for them |
-| user windows | `USER_ALLOC_PAGES` = 2 MiB × 5 / 4 KiB = 2560 | one window per task plus one, so a 2 MiB-aligned run fits wherever it lands |
+| page tables | `PT_ALLOC_PAGES` = 6 × (`TASK_COUNT`+1) = 36 | so the inherited memory map already accounts for them |
+| user windows | `USER_ALLOC_PAGES` = 2 MiB × 6 / 4 KiB = 3072 | one window per task plus one, so a 2 MiB-aligned run fits wherever it lands |
 
 Inside the image: `kstack` (`KSTACK_SIZE` = 16 KiB), `tstacks`
 (`TASK_COUNT`+1 of them — the extra one is a guard slot never handed out),
@@ -388,9 +388,14 @@ firmware reports; consumers must stride by the reported size.
 
 `mem_build_map` emits, in ascending address order: the first 640 KiB as
 `EfiBootServicesData`; `0xA0000..0x100000` as `EfiReservedMemoryType`, uncached;
-`G_BASE` to `FW_HEAP_BASE` as `EfiBootServicesData`; then one descriptor per
-allocation record, with the type the caller asked for; then the unallocated
-tail as `EfiConventionalMemory`. Recording the requested type matters: an OS may
+`G_BASE` to `FW_HEAP_BASE` in four pieces — the pages holding the globals and
+the first page of `FW_TABLES` (system table, runtime services, configuration
+table) as `EfiRuntimeServicesData` with `EFI_MEMORY_RUNTIME`, the stack and the
+rest of `FW_TABLES` as `EfiBootServicesData`; then one descriptor per
+allocation record, with the type the caller asked for and `EFI_MEMORY_RUNTIME`
+on the runtime types; then the unallocated tail as `EfiConventionalMemory`;
+then the flash as `EfiMemoryMappedIO`, uncached, with `EFI_MEMORY_RUNTIME`,
+because the runtime services' code executes from it in place. Recording the requested type matters: an OS may
 reuse `EfiBootServicesData` after `ExitBootServices`, so an image handed back
 under the wrong type would be freed out from under itself.
 
