@@ -9,6 +9,8 @@
 
 bits 64
 
+MXCSR_DEFAULT   equ 0x1F80
+
 ; ----------------------------------------------------------------------------
 ; SEC
 ; ----------------------------------------------------------------------------
@@ -21,6 +23,25 @@ sec_entry64:
     mov     ss, ax
     mov     rsp, FW_STACK_TOP
     xor     rbp, rbp
+
+    ; The x87 FPU and SSE, in the state the UEFI specification requires of an
+    ; x64 platform before any image runs (2.3.4): CR0.EM clear and CR0.MP set
+    ; so the FPU is native; CR4.OSFXSR and CR4.OSXMMEXCPT set so SSE
+    ; instructions execute and fault properly; FCW 0x037F and MXCSR 0x1F80,
+    ; every exception masked, round to nearest. Without this the first SSE
+    ; instruction an image executes is #UD -- and every compiler targeting
+    ; UEFI emits them, for memcpy if nothing else.
+    mov     rax, cr0
+    and     rax, ~(1 << 2)                      ; EM
+    or      rax, 1 << 1                         ; MP
+    mov     cr0, rax
+    mov     rax, cr4
+    or      rax, (1 << 9) | (1 << 10)           ; OSFXSR, OSXMMEXCPT
+    mov     cr4, rax
+    fninit                                      ; FCW = 0x037F
+    push    qword MXCSR_DEFAULT
+    ldmxcsr [rsp]
+    add     rsp, 8
 
     ; Globals live in RAM whose contents are undefined at reset.
     mov     rdi, G_BASE
@@ -327,6 +348,7 @@ bds_main:
     puts    msg_starting
 
     mov     [abs g_exit_rsp], rsp
+    mov     qword [abs g_current_image], H_IMAGE
     and     rsp, -16                            ; the ABI wants 16-byte alignment
     sub     rsp, 32                             ; ...and 32 bytes of shadow space
     mov     rcx, H_IMAGE                        ; ImageHandle

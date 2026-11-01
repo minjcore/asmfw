@@ -134,7 +134,7 @@ Phần này quan trọng, vì nó là thứ làm cho những phần còn lại �
 - **Không có `SetVirtualAddressMap`** — runtime services chỉ còn hợp lệ ở địa chỉ
   vật lý.
 - **FAT32 chỉ đọc, chỉ tên ngắn 8.3.**
-- **Không `LoadImage`/`StartImage`** — BDS nạp đúng một image mà nó boot.
+- **`LoadImage` chỉ nạp từ buffer**, không từ device path; tối đa 8 image mỗi lần boot.
 - **Một ổ ATA duy nhất**, primary master, PIO, LBA28.
 - **Biến UEFI nằm trong RAM** — 32 ô, mất khi reset; không có ghi có xác thực.
 - **Không Secure Boot**, không setup UI.

@@ -100,6 +100,8 @@ check_fw() {
     want "$log" "system: QEMU Standard PC (i440FX + PIIX, 1996)"
     want "$log" "appended to, found among 1 by enumeration, deleted"
     want "$log" "runtime services and their code are runtime memory"
+    want "$log" "a copy of me, started by its parent with load options; leaving through Exit()"
+    want "$log" "Exit() came back with its status, and every callee-saved register survived"
     want "$log" "graphics output protocol located; drawing"
     want "$log" "ConIn"
     want "$log" "[BDS] image returned, status 0000000000000000"
@@ -175,6 +177,7 @@ check_ovmf() {
     want "$log" "structures walked to the end marker; entry point checksums to zero"
     want "$log" "refused a change of attributes, appended to, found among"
     want "$log" "runtime services and their code are runtime memory"
+    want "$log" "Exit() came back with its status, and every callee-saved register survived"
     want "$log" "graphics output protocol located; drawing"
 
     log=$LOGS/ovmfk.log

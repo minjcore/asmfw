@@ -23,7 +23,7 @@ IMAGE_BASE      equ 0x0000000140000000
 SECT_ALIGN      equ 0x1000
 FILE_ALIGN      equ 0x1000
 TEXT_RVA        equ 0x1000
-TEXT_SIZE       equ 0x2000
+TEXT_SIZE       equ 0x3000
 IMAGE_SIZE      equ TEXT_RVA + TEXT_SIZE
 
 %macro WSTR 2
@@ -113,6 +113,15 @@ ST_CONFIGTABLE      equ 0x70
 ST_RUNTIMESERVICES  equ 0x58
 
 BS_GETMEMORYMAP     equ 0x38
+BS_LOADIMAGE        equ 0xC8
+BS_STARTIMAGE       equ 0xD0
+BS_EXIT             equ 0xD8
+F_SETPOSITION       equ 0x38
+LI_PARENTHANDLE     equ 0x08
+LI_LOADOPTIONSSIZE  equ 0x30
+LI_LOADOPTIONS      equ 0x38
+CHILD_STATUS        equ 0x2A            ; what the child exits with
+SENTINEL            equ 0x5EA1ED0FF1CE5EED
 BS_ALLOCATEPOOL     equ 0x40
 BS_FREEPOOL         equ 0x48
 RT_GETTIME          equ 0x18
@@ -231,6 +240,11 @@ efi_main:
             mov     [rel g_image], rcx
             mov     [rel g_st], rdx
 
+            ; Started by a copy of this program rather than by firmware? Then
+            ; say so and leave through Exit(), before touching the screen.
+            call    child_check
+
+            mov     rdx, [rel g_st]
             mov     rbx, [rdx + ST_CONOUT]
             mov     rsi, [rdx + ST_BOOTSERVICES]
 
@@ -314,6 +328,7 @@ efi_main:
             call    show_smbios
             call    show_vars
             call    show_memmap
+            call    show_chain
 
 .graphics:
             ; --- graphics ---------------------------------------------------
@@ -1117,6 +1132,228 @@ is_runtime_data:
             ret
 
 ; ----------------------------------------------------------------------------
+; child_check -- if this image was started by its own parent copy, which says
+; so through LoadOptions, print one line and Exit() with CHILD_STATUS. Returns
+; only if it was not.
+;
+; Exit rather than a return, because Exit is the harder of the two for the
+; firmware: it is called from inside a function, two frames deep, and has to
+; come out of the StartImage that started this image with every register the
+; parent trusted put back.
+; ----------------------------------------------------------------------------
+child_check:
+            push    rbx
+            push    rsi
+            push    rdi
+            sub     rsp, 32
+            mov     rax, [rel g_st]
+            mov     rax, [rax + ST_BOOTSERVICES]
+            mov     rcx, [rel g_image]
+            lea     rdx, [rel li_guid]
+            lea     r8, [rel g_li]
+            call    [rax + BS_HANDLEPROTOCOL]
+            test    rax, rax
+            jnz     .not_child
+            mov     rbx, [rel g_li]
+            cmp     dword [rbx + LI_LOADOPTIONSSIZE], CHILD_MARK_BYTES
+            jne     .not_child
+            mov     rsi, [rbx + LI_LOADOPTIONS]
+            test    rsi, rsi
+            jz      .not_child
+            lea     rdi, [rel s_child_mark]
+            mov     ecx, CHILD_MARK_BYTES
+            repe    cmpsb
+            jne     .not_child
+
+            lea     rdx, [rel s_child_says]
+            call    out_w
+            ; Wreck every register the parent is trusting, so that only the
+            ; firmware putting them back can make the parent's check pass.
+            xor     ebx, ebx
+            xor     esi, esi
+            xor     edi, edi
+            xor     ebp, ebp
+            xor     r12d, r12d
+            xor     r13d, r13d
+            xor     r14d, r14d
+            xor     r15d, r15d
+            pxor    xmm6, xmm6
+            pxor    xmm15, xmm15
+            mov     rax, [rel g_st]
+            mov     rax, [rax + ST_BOOTSERVICES]
+            mov     rcx, [rel g_image]
+            mov     edx, CHILD_STATUS
+            xor     r8d, r8d
+            xor     r9d, r9d
+            call    [rax + BS_EXIT]
+            ; Exit does not return. If it did, the parent sees a wrong status.
+.not_child:
+            add     rsp, 32
+            pop     rdi
+            pop     rsi
+            pop     rbx
+            ret
+
+; ----------------------------------------------------------------------------
+; show_chain -- LoadImage a copy of this program from its own file, hand it
+; load options, StartImage it, and check what comes back: the status it gave
+; Exit(), and every callee-saved register exactly as it was.
+; ----------------------------------------------------------------------------
+show_chain:
+            push    rbx
+            push    rsi
+            push    rdi
+            push    r12
+            push    r13
+            push    r14
+            push    r15
+            push    rbp
+            sub     rsp, 56                     ; shadow, two stack arguments, alignment
+
+            mov     ebp, 1                      ; the step, for the failure message
+            mov     rax, [rel g_file]
+            test    rax, rax
+            jz      .fail
+
+            ; --- 1: the file, whole, into a pool buffer -----------------------
+            mov     rsi, [rel g_st]
+            mov     rsi, [rsi + ST_BOOTSERVICES]
+            mov     ecx, EfiLoaderData
+            mov     edx, IMAGE_SIZE
+            lea     r8, [rel g_child_buf]
+            call    [rsi + BS_ALLOCATEPOOL]
+            test    rax, rax
+            jnz     .fail
+            mov     rcx, [rel g_file]
+            xor     edx, edx
+            mov     rax, [rel g_file]
+            call    [rax + F_SETPOSITION]
+            test    rax, rax
+            jnz     .fail
+            mov     qword [rel g_readlen], IMAGE_SIZE
+            mov     rcx, [rel g_file]
+            lea     rdx, [rel g_readlen]
+            mov     r8, [rel g_child_buf]
+            mov     rax, [rel g_file]
+            call    [rax + F_READ]
+            test    rax, rax
+            jnz     .fail
+            cmp     qword [rel g_readlen], IMAGE_SIZE
+            jne     .fail
+
+            ; --- 2: LoadImage ---------------------------------------------------
+            inc     ebp
+            mov     rsi, [rel g_st]
+            mov     rsi, [rsi + ST_BOOTSERVICES]
+            xor     ecx, ecx                    ; BootPolicy
+            mov     rdx, [rel g_image]          ; ParentImageHandle
+            xor     r8d, r8d                    ; DevicePath
+            mov     r9, [rel g_child_buf]       ; SourceBuffer
+            mov     qword [rsp + 0x20], IMAGE_SIZE
+            lea     rax, [rel g_child]
+            mov     [rsp + 0x28], rax
+            call    [rsi + BS_LOADIMAGE]
+            test    rax, rax
+            jnz     .fail
+
+            ; --- 3: its LoadedImage, and the load options that mark it ----------
+            inc     ebp
+            mov     rcx, [rel g_child]
+            lea     rdx, [rel li_guid]
+            lea     r8, [rel g_child_li]
+            call    [rsi + BS_HANDLEPROTOCOL]
+            test    rax, rax
+            jnz     .fail
+            mov     rax, [rel g_child_li]
+            mov     rdx, [rel g_image]
+            cmp     [rax + LI_PARENTHANDLE], rdx
+            jne     .fail
+            mov     dword [rax + LI_LOADOPTIONSSIZE], CHILD_MARK_BYTES
+            lea     rdx, [rel s_child_mark]
+            mov     [rax + LI_LOADOPTIONS], rdx
+
+            ; --- 4: StartImage, with every callee-saved register marked --------
+            inc     ebp
+            mov     [rel g_bs_saved], rsi
+            mov     rax, SENTINEL
+            mov     rbx, rax
+            mov     rsi, rax
+            mov     rdi, rax
+            mov     r12, rax
+            mov     r13, rax
+            mov     r14, rax
+            mov     r15, rax
+            movq    xmm6, rax
+            movq    xmm15, rax
+            mov     rcx, [rel g_child]
+            xor     edx, edx
+            xor     r8d, r8d
+            mov     rax, [rel g_bs_saved]
+            call    [rax + BS_STARTIMAGE]
+            mov     [rel g_child_status], rax
+
+            inc     ebp                         ; 5: the registers
+            mov     rax, SENTINEL
+            cmp     rbx, rax
+            jne     .regs
+            cmp     rsi, rax
+            jne     .regs
+            cmp     rdi, rax
+            jne     .regs
+            cmp     r12, rax
+            jne     .regs
+            cmp     r13, rax
+            jne     .regs
+            cmp     r14, rax
+            jne     .regs
+            cmp     r15, rax
+            jne     .regs
+            movq    rcx, xmm6
+            cmp     rcx, rax
+            jne     .regs
+            movq    rcx, xmm15
+            cmp     rcx, rax
+            jne     .regs
+            inc     ebp                         ; 6: the status
+            cmp     qword [rel g_child_status], CHILD_STATUS
+            jne     .status
+
+            lea     rdx, [rel s_chain_ok]
+            call    out_w
+            jmp     .done
+.regs:
+.status:
+            mov     rax, [rel g_child_status]
+.fail:
+            mov     r12, rax
+            lea     rdx, [rel s_chain_fail]
+            call    out_w
+            mov     eax, ebp
+            call    out_dec
+            lea     rdx, [rel s_var_status]
+            call    out_w
+            mov     rax, r12
+            lea     rdi, [rel g_strbuf]
+            mov     ecx, 16
+            call    hex_to_str
+            mov     word [rdi + 32], 0
+            mov     rdx, rdi
+            call    out_w
+            lea     rdx, [rel s_crlf]
+            call    out_w
+.done:
+            add     rsp, 56
+            pop     rbp
+            pop     r15
+            pop     r14
+            pop     r13
+            pop     r12
+            pop     rdi
+            pop     rsi
+            pop     rbx
+            ret
+
+; ----------------------------------------------------------------------------
 ; smbios_string -- RSI = a structure, AL = a 1-based string number.
 ; Returns RSI = that string, or a pointer to an empty one if it is absent.
 ; ----------------------------------------------------------------------------
@@ -1401,6 +1638,12 @@ VAR_DATA_LEN equ $ - var_data
 var_tail:   db "!"
             align 8
 
+li_guid:                                    ; 5B1B31A1-9562-11D2-8E3F-00A0C969723B
+            dd 0x5B1B31A1
+            dw 0x9562
+            dw 0x11D2
+            db 0x8E, 0x3F, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B
+
 gop_guid:
             dd 0x9042A9DE
             dw 0x23DC
@@ -1429,6 +1672,12 @@ g_smb_minor: dd 0
 g_strbuf:   times STRBUF_CHARS + 1 dw 0
             align 8
 g_vsize:    dq 0
+g_li:       dq 0
+g_child:    dq 0
+g_child_li: dq 0
+g_child_buf: dq 0
+g_child_status: dq 0
+g_bs_saved: dq 0
 g_mm:       dq 0
 g_mmsize:   dq 0
 g_mmkey:    dq 0
@@ -1461,6 +1710,11 @@ WSTR s_acpi_none, `  no ACPI configuration table on this firmware\r\n`
 WSTR s_crlf,     `\r\n`
 WSTR s_smb,      `  SMBIOS `
 WSTR s_var_name, `AsmfwPayloadTest`
+s_child_mark:   dw __utf16le__(`child`), 0
+CHILD_MARK_BYTES equ $ - s_child_mark
+WSTR s_child_says, `  a copy of me, started by its parent with load options; leaving through Exit()\r\n`
+WSTR s_chain_ok,   `  LoadImage, StartImage: the child ran, Exit() came back with its status, and every callee-saved register survived\r\n`
+WSTR s_chain_fail, `  LoadImage, StartImage: step `
 WSTR s_mm_ok,    `  memory map: `
 WSTR s_mm_ok2,   ` descriptors; the system table, runtime services and their code are runtime memory\r\n`
 WSTR s_mm_bad,   `  memory map: `

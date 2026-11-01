@@ -72,8 +72,8 @@ BS_FREEPOOL                     equ 0x048
 BS_CREATEEVENT                  equ 0x050
 BS_SETTIMER                     equ 0x058
 BS_WAITFOREVENT                 equ 0x060
-BS_CLOSEEVENT                   equ 0x068
-BS_SIGNALEVENT                  equ 0x070
+BS_SIGNALEVENT                  equ 0x068
+BS_CLOSEEVENT                   equ 0x070
 BS_CHECKEVENT                   equ 0x078
 BS_INSTALLPROTOCOLINTERFACE     equ 0x080
 BS_REINSTALLPROTOCOLINTERFACE   equ 0x088
@@ -329,12 +329,13 @@ EFI_SFS             equ FW_TABLES + 0x0A00
 EFI_BLOCKIO         equ FW_TABLES + 0x0A40
 EFI_BLOCKIO_MEDIA   equ FW_TABLES + 0x0A80
 EFI_ROOT_FILE       equ FW_TABLES + 0x0B00      ; the root directory object
-PROTO_DB            equ FW_TABLES + 0x0900      ; handle/GUID/interface records
+PROTO_DB            equ FW_TABLES + 0x1000      ; handle/GUID/interface records
+IMAGE_TABLE         equ FW_TABLES + 0x2000      ; images started by LoadImage
 ALLOC_TABLE         equ FW_TABLES + 0x8000
 MEMMAP_SCRATCH      equ FW_TABLES + 0xC000
 
 PROTO_REC_SIZE      equ 24                      ; handle, GUID pointer, interface
-PROTO_MAX           equ 32
+PROTO_MAX           equ 64
 
 ; Handles. A handle only has to be a unique non-null token, so each protocol
 ; instance stands in for its own handle.

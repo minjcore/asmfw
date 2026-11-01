@@ -677,9 +677,28 @@ bs_exit_boot_services:
 ; path, which is the only way out of an image that never returns normally.
 ; ----------------------------------------------------------------------------
 bs_exit:
-    mov     [abs g_exit_status], rdx
+    ; Exit belongs to the image that is running. Any other handle is either
+    ; an image that was loaded and never started, which Exit unloads, or a
+    ; mistake.
+    cmp     rcx, [abs g_current_image]
+    jne     .not_running
     mov     rax, rdx
-    jmp     image_exit_resume
+    cmp     rcx, H_IMAGE
+    jne     image_start_resume                  ; one started by StartImage
+    mov     [abs g_exit_status], rdx
+    jmp     image_exit_resume                   ; the one BDS started
+.not_running:
+    call    image_record
+    test    rax, rax
+    jz      .bad
+    cmp     dword [rax + IR_STATE], IMG_LOADED
+    jne     .bad
+    mov     dword [rax + IR_STATE], IMG_DONE
+    xor     eax, eax
+    ret
+.bad:
+    mov     rax, EFI_INVALID_PARAMETER
+    ret
 
 ; ----------------------------------------------------------------------------
 ; GetNextMonotonicCount(UINT64 *Count)

@@ -26,6 +26,7 @@ make check    # boot both disks, and both controls, and assert the log
     |
    SEC   real mode: A20, a flat GDT, protected mode
          32-bit: identity map the low 4 GiB with 2 MiB pages, enter long mode
+         64-bit: x87 and SSE on, as the UEFI spec requires of x64
     |
    PEI   size RAM from CMOS, arm the page allocator
     |
@@ -62,7 +63,9 @@ Boot Services implements memory (`AllocatePages` with all three allocation
 types, `AllocatePool`, `GetMemoryMap`, `ExitBootServices`), protocol lookup
 (`HandleProtocol`, `LocateProtocol`, `OpenProtocol`, `LocateHandle`,
 `LocateHandleBuffer`), `InstallConfigurationTable`, `Stall`, `CopyMem`,
-`SetMem`, `CalculateCrc32`, `Exit`, and the event calls ConIn needs. The rest
+`SetMem`, `CalculateCrc32`, image loading (`LoadImage` from a buffer,
+`StartImage`, `UnloadImage`, and an `Exit` that returns from the right
+`StartImage` however deeply images nest), and the event calls ConIn needs. The rest
 return `EFI_UNSUPPORTED` from a real function rather than being null pointers,
 so a caller gets a status code instead of a fault.
 
@@ -101,6 +104,7 @@ src/
   efi_bs.asm        boot services
   efi_rt.asm        runtime services
   efi_var.asm       the variable services, over a store in RAM
+  efi_image.asm     LoadImage, StartImage, UnloadImage, and where Exit returns
   efi_proto.asm     text in/out, graphics output
   efi_file.asm      simple file system, file, block I/O
 payload/
@@ -287,8 +291,10 @@ applied to something considerably easier to get subtly wrong.
 - **No `SetVirtualAddressMap`.** Runtime services stay valid only at their
   physical addresses.
 - **FAT32 short names only.** Long-name entries are skipped, not decoded.
-- **No `LoadImage` / `StartImage`.** BDS loads the one image it boots; a loader
-  cannot ask the firmware to load another.
+- **`LoadImage` takes a buffer, not a device path.** With no `SourceBuffer`
+  it returns `EFI_NOT_FOUND`: resolving a device path to a file is not done.
+  At most eight images per boot, and an unloaded image's memory is not given
+  back.
 - **One ATA disk**, primary master, PIO, LBA28.
 - **Variables live in RAM.** 32 slots, a 127-character name and 1760 bytes of
   data each. No authenticated writes (`EFI_UNSUPPORTED`), no hardware error

@@ -367,8 +367,8 @@ bs_template:
     dq  bs_unsupported                          ; CreateEvent
     dq  bs_unsupported                          ; SetTimer
     dq  bs_wait_for_event
-    dq  bs_close_event
     dq  bs_unsupported                          ; SignalEvent
+    dq  bs_close_event
     dq  bs_check_event
     dq  bs_unsupported                          ; InstallProtocolInterface
     dq  bs_unsupported                          ; ReinstallProtocolInterface
@@ -379,10 +379,10 @@ bs_template:
     dq  bs_locate_handle
     dq  bs_unsupported                          ; LocateDevicePath
     dq  bs_install_configuration_table
-    dq  bs_unsupported                          ; LoadImage
-    dq  bs_unsupported                          ; StartImage
+    dq  bs_load_image
+    dq  bs_start_image
     dq  bs_exit
-    dq  bs_unsupported                          ; UnloadImage
+    dq  bs_unload_image
     dq  bs_exit_boot_services
     dq  bs_get_next_monotonic_count
     dq  bs_stall

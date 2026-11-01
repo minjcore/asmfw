@@ -21,18 +21,19 @@ The firmware in flash ROM. Narrative: REFERENCE.md §3.
 | [acpi.asm](src/acpi.md) | 664 | 12 | QEMU's fw_cfg interface, and the ACPI tables behind it |
 | [ata.asm](src/ata.md) | 295 | 5 | ATA PIO on the primary channel |
 | [console.asm](src/console.md) | 277 | 6 | A text console painted directly into the framebuffer |
-| [efi_bs.asm](src/efi_bs.md) | 863 | 29 | Boot services |
+| [efi_bs.asm](src/efi_bs.md) | 882 | 29 | Boot services |
 | [efi_file.asm](src/efi_file.md) | 938 | 19 | Simple File System and File protocols over the FAT32 reader |
+| [efi_image.asm](src/efi_image.md) | 274 | 6 | LoadImage, StartImage, UnloadImage, and where Exit returns |
 | [efi_proto.asm](src/efi_proto.md) | 783 | 20 | The protocols an image actually touches |
 | [efi_rt.asm](src/efi_rt.md) | 194 | 4 | Runtime services |
 | [efi_tables.asm](src/efi_tables.md) | 486 | 7 | Build the structures an EFI image is handed |
 | [efi_var.asm](src/efi_var.md) | 515 | 8 | UEFI variables, kept in RAM |
 | [fat.asm](src/fat.md) | 456 | 8 | Enough FAT32 to find and read one file |
-| [fw.asm](src/fw.md) | 71 | 1 | The flash volume |
+| [fw.asm](src/fw.md) | 72 | 1 | The flash volume |
 | [gpt.asm](src/gpt.md) | 168 | 1 | Find the EFI system partition |
 | [init16.asm](src/init16.md) | 66 | 2 | SEC phase, part 1 |
 | [init32.asm](src/init32.md) | 74 | 1 | SEC phase, part 2 |
-| [init64.asm](src/init64.md) | 455 | 17 | The firmware's phase sequence once long mode is live |
+| [init64.asm](src/init64.md) | 477 | 17 | The firmware's phase sequence once long mode is live |
 | [mem.asm](src/mem.md) | 258 | 3 | The page allocator behind AllocatePages, and the memory map |
 | [pci.asm](src/pci.md) | 345 | 7 | Type 1 PCI configuration access and a minimal device scan |
 | [pe.asm](src/pe.md) | 322 | 2 | The PE32+ loader |
@@ -41,8 +42,8 @@ The firmware in flash ROM. Narrative: REFERENCE.md §3.
 | [timer.asm](src/timer.md) | 109 | 2 | Delays, measured against the 8254 |
 | [util.asm](src/util.md) | 201 | 12 | Console output primitives and memory helpers |
 | [vbe.asm](src/vbe.md) | 219 | 4 | Bring up a linear framebuffer without a VGA option ROM |
-| [const.inc](src/const.md) | 142 | 0 | Build-wide constants and the firmware's physical memory map |
-| [efi.inc](src/efi.md) | 348 | 0 | The UEFI ABI as this firmware implements it |
+| [const.inc](src/const.md) | 143 | 0 | Build-wide constants and the firmware's physical memory map |
+| [efi.inc](src/efi.md) | 349 | 0 | The UEFI ABI as this firmware implements it |
 | [font.inc](src/font.md) | 109 | 0 | The console font, one 8x16 cell per printable ASCII character |
 | [macros.inc](src/macros.md) | 31 | 0 | Small assembly conveniences |
 
@@ -88,8 +89,8 @@ The UEFI application the firmware boots to test itself. Narrative: REFERENCE.md 
 
 | File | Lines | Entry points | Purpose |
 | --- | --- | --- | --- |
-| [hello.asm](payload/hello.md) | 1496 | 18 | A UEFI application, PE32+ headers and all, in one flat binary |
+| [hello.asm](payload/hello.md) | 1750 | 20 | A UEFI application, PE32+ headers and all, in one flat binary |
 
 ---
 
-47 modules. The narrative documentation is in `REFERENCE.md`; the same tables in Vietnamese are in [../vi/modules/](../vi/modules/README.md).
+48 modules. The narrative documentation is in `REFERENCE.md`; the same tables in Vietnamese are in [../vi/modules/](../vi/modules/README.md).

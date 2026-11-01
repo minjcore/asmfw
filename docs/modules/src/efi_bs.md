@@ -1,5 +1,5 @@
 # efi_bs.asm
-[`src/efi_bs.asm`](../../../src/efi_bs.asm) — 863 lines, 29 entry points.
+[`src/efi_bs.asm`](../../../src/efi_bs.asm) — 882 lines, 29 entry points.
 
 Boot services.
 
@@ -27,17 +27,17 @@ What is implemented is what a boot loader actually calls. The rest return EFI_UN
 | `bs_install_configuration_table` | [570](../../../src/efi_bs.asm#L570) | — |
 | `bs_exit_boot_services` | [660](../../../src/efi_bs.asm#L660) | — |
 | `bs_exit` | [679](../../../src/efi_bs.asm#L679) | — |
-| `bs_get_next_monotonic_count` | [687](../../../src/efi_bs.asm#L687) | — |
-| `bs_stall` | [703](../../../src/efi_bs.asm#L703) | — |
-| `bs_set_watchdog_timer` | [712](../../../src/efi_bs.asm#L712) | — |
-| `bs_connect_controller` | [719](../../../src/efi_bs.asm#L719) | — |
-| `bs_wait_for_event` | [729](../../../src/efi_bs.asm#L729) | — |
-| `bs_check_event` | [769](../../../src/efi_bs.asm#L769) | — |
-| `bs_close_event` | [784](../../../src/efi_bs.asm#L784) | — |
-| `kbd_peek` | [791](../../../src/efi_bs.asm#L791) | EAX non-zero if the keyboard controller has a byte waiting |
-| `bs_calculate_crc32` | [802](../../../src/efi_bs.asm#L802) | — |
-| `bs_copy_mem` | [829](../../../src/efi_bs.asm#L829) | — |
-| `bs_set_mem` | [856](../../../src/efi_bs.asm#L856) | — |
+| `bs_get_next_monotonic_count` | [706](../../../src/efi_bs.asm#L706) | — |
+| `bs_stall` | [722](../../../src/efi_bs.asm#L722) | — |
+| `bs_set_watchdog_timer` | [731](../../../src/efi_bs.asm#L731) | — |
+| `bs_connect_controller` | [738](../../../src/efi_bs.asm#L738) | — |
+| `bs_wait_for_event` | [748](../../../src/efi_bs.asm#L748) | — |
+| `bs_check_event` | [788](../../../src/efi_bs.asm#L788) | — |
+| `bs_close_event` | [803](../../../src/efi_bs.asm#L803) | — |
+| `kbd_peek` | [810](../../../src/efi_bs.asm#L810) | EAX non-zero if the keyboard controller has a byte waiting |
+| `bs_calculate_crc32` | [821](../../../src/efi_bs.asm#L821) | — |
+| `bs_copy_mem` | [848](../../../src/efi_bs.asm#L848) | — |
+| `bs_set_mem` | [875](../../../src/efi_bs.asm#L875) | — |
 
 ## Definitions
 
@@ -47,6 +47,7 @@ Constants: 2.
 
 Calls into:
 
+- [efi_image.asm](efi_image.md) — `image_record`
 - [efi_tables.asm](efi_tables.md) — `crc32`, `efi_fix_crc`, `proto_find`
 - [init64.asm](init64.md) — `image_exit_resume`
 - [mem.asm](mem.md) — `mem_alloc_pages`, `mem_alloc_pool`, `mem_build_map`

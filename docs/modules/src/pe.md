@@ -27,6 +27,7 @@ Calls into:
 
 Called by:
 
+- [efi_image.asm](efi_image.md) — `pe_load`
 - [init64.asm](init64.md) — `pe_error_string`, `pe_load`
 
 ---

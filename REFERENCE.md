@@ -335,16 +335,33 @@ Implemented, from the template at [src/efi_tables.asm:354](src/efi_tables.asm#L3
 | memory | `AllocatePages` (all three allocation types), `AllocatePool`, `GetMemoryMap`, `FreePages`, `FreePool` |
 | protocols | `HandleProtocol`, `LocateProtocol`, `OpenProtocol`, `CloseProtocol`, `LocateHandle`, `LocateHandleBuffer` |
 | events | `WaitForEvent`, `CheckEvent`, `CloseEvent` — the three `ConIn` needs |
+| images | `LoadImage` (from a buffer), `StartImage`, `UnloadImage`, `Exit` — in `efi_image.asm` |
 | misc | `RaiseTPL`, `RestoreTPL`, `InstallConfigurationTable`, `Exit`, `ExitBootServices`, `GetNextMonotonicCount`, `Stall`, `SetWatchdogTimer`, `ConnectController`, `CalculateCrc32`, `CopyMem`, `SetMem` |
 
 `FreePages` and `FreePool` return `EFI_SUCCESS` and do nothing: the allocator is
 a bump pointer. Everything else — `CreateEvent`, `SetTimer`, `SignalEvent`, the
 `InstallProtocolInterface` family, `RegisterProtocolNotify`,
-`LocateDevicePath`, `LoadImage`, `StartImage`, `UnloadImage`,
+`LocateDevicePath`,
 `DisconnectController`, `OpenProtocolInformation`, `ProtocolsPerHandle`, the
 `Multiple` variants, `CreateEventEx` — is `bs_unsupported`, a real function
 returning `EFI_UNSUPPORTED`. Never a null pointer, so a caller gets a status
 code instead of a fault.
+
+An image started by `StartImage` gets a 256-byte record in `IMAGE_TABLE`
+(`FW_TABLES + 0x2000`, eight of them) that begins with its
+`EFI_LOADED_IMAGE_PROTOCOL`, so the record's address is its handle. The record
+keeps the stack `StartImage` left and the image that was current before;
+`Exit` unwinds to the first and restores the second, so nesting is a chain of
+records. `StartImage` saves and restores every callee-saved register of the
+Microsoft x64 ABI, `XMM6`–`XMM15` included, since an image leaving through
+`Exit` never runs its own epilogue. `g_current_image` names the running image;
+`Exit` with any other handle is `EFI_INVALID_PARAMETER`, unless that image was
+loaded and never started, which `Exit` unloads.
+
+`SignalEvent` and `CloseEvent` sit at `0x68` and `0x70`, in the specification's
+order. They were the other way round until `LoadImage` work found it: a
+`CloseEvent` call landed on `bs_unsupported`, and a `SignalEvent` call closed
+the event.
 
 ### 4.3 Runtime services
 

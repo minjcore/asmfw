@@ -96,7 +96,7 @@ do người khác tạo.
 **Control:** tạo một đĩa có tên dài bằng `mtools`, mount dưới OVMF và dưới asmfw,
 so danh sách file.
 
-### 1.3 `LoadImage` / `StartImage`
+### 1.3 `LoadImage` / `StartImage` — ✅ đã xong (2026-11-01)
 
 **Đã có:** `pe_load` đầy đủ — nạp section, áp base relocation, kiểm biên. BDS
 đang dùng nó.
@@ -109,6 +109,25 @@ một mức).
 **Vì sao:** đây là thứ cho phép boot theo chuỗi — một loader gọi loader khác.
 **Control:** cho payload `LoadImage` một bản copy của chính nó và chạy; nó phải
 in banner hai lần rồi trả về sạch.
+**Đã làm:** `src/efi_image.asm`. Mỗi image một record trong `IMAGE_TABLE`, mở
+đầu bằng `EFI_LOADED_IMAGE_PROTOCOL` của nó nên địa chỉ record là handle; record
+giữ stack để `Exit()` unwind về và image hiện hành trước nó — lồng nhau là một
+chuỗi record. `StartImage` lưu và khôi phục mọi thanh ghi callee-saved của ABI
+Microsoft x64, kể cả `XMM6`–`XMM15`. Payload đọc lại chính file của mình,
+`LoadImage`, gắn `LoadOptions` cho con, `StartImage`; con nhận ra mình qua
+`LoadOptions`, cố ý phá mọi thanh ghi callee-saved rồi `Exit(0x2A)`; cha kiểm
+status và từng thanh ghi. Dưới OVMF: y hệt. Bỏ thử dòng khôi phục `XMM15` thì
+cha báo đúng bước hỏng.
+**Control còn bắt được hai lỗi có sẵn:**
+- **SSE chưa từng được bật.** Lệnh SSE đầu tiên của payload là `#UD` dưới asmfw,
+  chạy bình thường dưới OVMF. Spec UEFI bắt buộc x64 phải có CR0.EM=0,
+  CR4.OSFXSR/OSXMMEXCPT=1, FCW `0x037F`, MXCSR `0x1F80` trước khi chạy image —
+  và mọi compiler nhắm UEFI đều sinh lệnh SSE. Nghĩa là trước đây asmfw không
+  chạy được *bất kỳ* image nào viết bằng C. Đã sửa ở SEC.
+- **`SignalEvent` và `CloseEvent` đổi chỗ** trong bảng Boot Services và trong
+  `efi.inc`. Đã sửa theo đúng thứ tự spec.
+- Kèm theo: `PROTO_DB` ở `+0x900` chỉ có 256 byte trước khi đè lên `EFI_SFS` mà
+  khai báo 32 record — đã dời sang `+0x1000`, 64 record.
 
 ### 1.4 Variable store trong RAM — ✅ đã xong (2026-11-01)
 

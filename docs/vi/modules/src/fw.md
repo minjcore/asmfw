@@ -1,5 +1,5 @@
 # fw.asm
-[`src/fw.asm`](../../../../src/fw.asm) — 71 dòng, 1 entry point.
+[`src/fw.asm`](../../../../src/fw.asm) — 72 dòng, 1 entry point.
 
 The flash volume.
 
@@ -9,7 +9,7 @@ One flat binary, assembled at its final address. The layout is fixed by the arch
 
 | Tên | Dòng | Hợp đồng |
 | --- | --- | --- |
-| `reset_vector` | [69](../../../../src/fw.asm#L69) | — |
+| `reset_vector` | [70](../../../../src/fw.asm#L70) | — |
 
 ## Phụ thuộc
 
