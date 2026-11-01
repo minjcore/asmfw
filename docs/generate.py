@@ -304,3 +304,14 @@ for code, L in LANGS.items():
     print('%s: %d module trong %s' % (code, len(ALLFILES), L['out']))
 
 print('%d cạnh phụ thuộc' % sum(len(v) for v in deps.values()))
+
+# Entry point không có comment header thì bảng ghi '—'. Một khoảng trống chỉ
+# hiện ra khi có người mở đúng trang đó thì không ai thấy; đếm nó ra thành số.
+missing = [(p, c['n']) for p in ALLFILES for c in P[p]['code'] if not c['doc']]
+total = sum(len(P[p]['code']) for p in ALLFILES)
+print('%d trong %d entry point chưa có hợp đồng' % (len(missing), total))
+per = defaultdict(int)
+for p, _ in missing:
+    per[p] += 1
+for p, n in sorted(per.items(), key=lambda kv: (-kv[1], kv[0])):
+    print('  %4d  %s' % (n, p))

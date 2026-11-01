@@ -75,6 +75,7 @@ produced it and why it is correct.
 make check          both disks, then the same two under OVMF   -- 47 assertions
 make check-fw       the firmware and the payload it boots
 make check-kernel   the kernel only
+make check-docs     every line number in the module docs against the source
 ```
 
 The assertions live in `tools/smoke.sh`, and they are landmark lines: fixed
@@ -221,12 +222,14 @@ than reasoning about registers you have not read.
 # firmware — build/fw.lst is written by every build, at final addresses
 grep -n 'FFF0ABCD' build/fw.lst
 
-# kernel — no listing is built; make one. org 0, so subtract the load base
-# the firmware printed ("[BDS] image at ...") from the faulting RIP.
-nasm -f bin -I kernel/ -I src/ -o /dev/null -l build/kernel.lst kernel/kernel.asm
+# kernel — build/kernel.lst is written by every kernel build (`make lstk`
+# asks for it by name). org 0, so subtract the load base the firmware printed
+# ("[BDS] image at ...") from the faulting RIP.
+grep -n '00001A2B' build/kernel.lst
 
-# a program — subtract the window base the kernel printed for that task
-nasm -f bin -I kernel/ -I kernel/progs/ -o /dev/null -l build/maze.lst kernel/progs/maze.asm
+# a program — build/maze.lst, count.lst, rogue.lst, type.lst, same build.
+# Subtract the window base the kernel printed for that task.
+grep -n '000002C4' build/maze.lst
 ```
 
 `cs 002b` in a trap frame is ring 3: the RIP belongs to a program, and the

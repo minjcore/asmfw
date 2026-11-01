@@ -66,9 +66,8 @@ kernel-modules.md:208  paging_build: documented at kernel/paging.asm:23, now at 
 kernel-modules.md:23   kernel/sched.asm: documented as 999 lines, is 517
 ```
 
-Exit code là 0 khi khớp, 1 khi không — nên nó chạy được ở bất cứ đâu `make check`
-chạy được. (Hiện chưa nối vào `Makefile`; đó là một dòng thêm vào target `check`
-nếu muốn.)
+Exit code là 0 khi khớp, 1 khi không — và `make check` chạy nó đầu tiên (target
+`check-docs`), nên tài liệu lệch thì cả lần kiểm fail trước khi kịp boot.
 
 **Điều nó không kiểm được:** một *hợp đồng* có còn đúng hay không. Một hàm bị đổi
 quy ước thanh ghi vẫn giữ nguyên label, nguyên số dòng, và nguyên cái comment đã
@@ -162,8 +161,6 @@ theo trí nhớ.
 
 ## Còn thiếu gì
 
-- `verify.py` **chưa** được nối vào `make check`. Thêm một dòng vào target `check`
-  là xong, nhưng đó là thay đổi build nên chưa làm.
 - `REFERENCE.md` dài 1359 dòng. Tách nó ra thành nhiều file là hợp lý, nhưng khoảng
   20 tham chiếu nội bộ dạng chữ (`§7.5`, `§6.1` — không phải link) sẽ **âm thầm**
   thành con trỏ chết nếu tách mà không viết lại từng cái.

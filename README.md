@@ -316,6 +316,7 @@ which is the only comparison that can tell a firmware bug from a payload bug.
 make check          both disks, then both controls
 make check-fw       the firmware and the payload it boots
 make check-kernel   the kernel only
+make check-docs     the module docs' line numbers, which `check` runs first
 ```
 
 The assertions are in [tools/smoke.sh](tools/smoke.sh), transcripts land in

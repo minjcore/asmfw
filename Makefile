@@ -15,6 +15,7 @@ STAGE := $(BUILD)/payload
 # The kernel is a second, separate bootable disk: it takes the machine over,
 # so it cannot share one with the payload that only borrows it.
 KESP   := $(BUILD)/kernel.img
+KLST   := $(BUILD)/kernel.lst
 KSTAGE := $(BUILD)/kernel
 KSRCS  := $(wildcard kernel/*.asm) $(wildcard kernel/*.inc) src/font.inc
 PROGS  := MAZE.BIN COUNT.BIN ROGUE.BIN TYPE.BIN
@@ -36,7 +37,7 @@ QEMUFLAGS := -machine pc \
              -no-reboot
 
 .PHONY: all run serial screenshot ovmf esp kernel runk serialk ovmfk \
-        check check-fw check-kernel clean
+        check check-fw check-kernel check-docs lstk clean
 
 all: $(FW) $(ESP)
 
@@ -70,7 +71,7 @@ $(ESP): $(STAGE)/BOOTX64.EFI tools/mkesp.py | $(BUILD)
 kernel: $(KESP)
 
 $(KSTAGE)/BOOTX64.EFI: $(KSRCS) | $(KSTAGE)
-	$(NASM) -f bin -I kernel/ -I src/ -o $@ kernel/kernel.asm
+	$(NASM) -f bin -I kernel/ -I src/ -o $@ -l $(KLST) kernel/kernel.asm
 
 # The programs are flat binaries, not images: no headers, no relocations, and
 # an entry point at offset zero, because the kernel has no loader beyond a read.
@@ -80,16 +81,34 @@ PROGDEPS  := kernel/uabi.inc kernel/progs/ulib.inc
 PROGFLAGS := -f bin -I kernel/ -I kernel/progs/
 
 $(KSTAGE)/MAZE.BIN: kernel/progs/maze.asm $(PROGDEPS) | $(KSTAGE)
-	$(NASM) $(PROGFLAGS) -o $@ $<
+	$(NASM) $(PROGFLAGS) -o $@ -l $(BUILD)/maze.lst $<
 
 $(KSTAGE)/COUNT.BIN: kernel/progs/count.asm $(PROGDEPS) | $(KSTAGE)
-	$(NASM) $(PROGFLAGS) -o $@ $<
+	$(NASM) $(PROGFLAGS) -o $@ -l $(BUILD)/count.lst $<
 
 $(KSTAGE)/ROGUE.BIN: kernel/progs/rogue.asm $(PROGDEPS) | $(KSTAGE)
-	$(NASM) $(PROGFLAGS) -o $@ $<
+	$(NASM) $(PROGFLAGS) -o $@ -l $(BUILD)/rogue.lst $<
 
 $(KSTAGE)/TYPE.BIN: kernel/progs/type.asm $(PROGDEPS) | $(KSTAGE)
-	$(NASM) $(PROGFLAGS) -o $@ $<
+	$(NASM) $(PROGFLAGS) -o $@ -l $(BUILD)/type.lst $<
+
+# Listings, the symbol map for turning a faulting RIP back into a line. They
+# are written by every kernel build, as fw.lst is by every firmware build;
+# this target exists so asking for one by name works too. The kernel is
+# assembled at org 0: subtract the image base the firmware printed. A
+# program's offset is rip minus the window the kernel printed for that task.
+PLSTS := $(addprefix $(BUILD)/,maze.lst count.lst rogue.lst type.lst)
+
+lstk: $(KLST) $(PLSTS)
+	@ls -1 $^
+
+# The builds above leave these behind; these rules only run when one is
+# missing or stale, and assemble for the listing alone.
+$(KLST): $(KSRCS) | $(BUILD)
+	$(NASM) -f bin -I kernel/ -I src/ -o /dev/null -l $@ kernel/kernel.asm
+
+$(BUILD)/%.lst: kernel/progs/%.asm $(PROGDEPS) | $(BUILD)
+	$(NASM) $(PROGFLAGS) -o /dev/null -l $@ $<
 
 $(KESP): $(KSTAGE)/BOOTX64.EFI $(PROGBIN) tools/mkesp.py | $(BUILD)
 	$(PYTHON) tools/mkesp.py $@ $(KSTAGE) 64
@@ -162,9 +181,14 @@ clean:
 # runs the same disks under OVMF, which is the only comparison that can tell a
 # firmware bug from a payload bug.
 # ---------------------------------------------------------------------------
-check: $(FW) $(ESP) $(KESP)
+check: check-docs $(FW) $(ESP) $(KESP)
 	@OVMF_CODE="$(OVMF_CODE)" OVMF_VARS="$(OVMF_VARS)" BUILD="$(BUILD)" \
 	 QEMU="$(QEMU)" tools/smoke.sh all
+
+# Every line number in docs/modules/ and docs/vi/modules/ against the source.
+# A check that only runs when someone remembers it does not get run.
+check-docs:
+	@$(PYTHON) docs/verify.py
 
 check-fw: $(FW) $(ESP)
 	@BUILD="$(BUILD)" QEMU="$(QEMU)" tools/smoke.sh fw

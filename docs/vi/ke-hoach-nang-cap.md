@@ -9,9 +9,10 @@ Trạng thái hiện tại được xác nhận từ source, không phải từ 
 
 ---
 
-## Tầng 0 — Rẻ, làm ngay
+## Tầng 0 — Rẻ, làm ngay — ✅ đã xong (2026-11-01)
 
 Ba việc dưới đây mỗi việc dưới một giờ, và cả ba đều gỡ một chỗ đau đã tồn tại.
+Cả ba đã làm; mỗi mục ghi kết quả control ở dòng **Đã làm**.
 
 ### 0.1 Nối `verify.py` vào `make check`
 
@@ -20,6 +21,9 @@ Ba việc dưới đây mỗi việc dưới một giờ, và cả ba đều g�
 **Vì sao:** một bộ kiểm tra chỉ chạy khi có người nhớ ra thì sẽ không được chạy.
 **Control:** chính nó — sửa lệch một số dòng rồi xem `make check` có fail không
 (đã thử, có fail).
+**Đã làm:** target `check-docs`, là prerequisite đầu tiên của `check`. Chèn một
+dòng vào đầu `kernel/paging.asm` → `make check` dừng ở `check-docs`, nêu đúng 4
+khẳng định lệch, trước khi boot.
 
 ### 0.2 Target sinh listing cho kernel
 
@@ -32,6 +36,11 @@ cái"* bằng tay, mỗi lần debug.
 xuyên nhất khi sửa kernel, và hiện nó là việc thủ công.
 **Control:** cố tình gây fault trong một task, rồi kiểm tra dòng tra ra từ
 listing đúng là dòng đã sửa.
+**Đã làm:** mọi lần build kernel giờ ghi `build/kernel.lst` và một listing cho
+mỗi program (`maze/count/rogue/type.lst`); `make lstk` sinh lại cái nào thiếu.
+Control dùng hai fault cố ý sẵn có: `#PF` của task 2 tại `rip 1600087`, trừ
+window `1600000` = `0x87` → `rogue.lst` dòng 57 `mov al, [rax]`; `#GP` của task 1
+tại `0x89` → `count.lst` dòng 65 `cli`. Cả hai đúng.
 
 ### 0.3 Báo cáo độ phủ comment header
 
@@ -41,6 +50,9 @@ comment header.
 đồng"*.
 **Vì sao:** biến một khoảng trống vô hình thành một con số giảm dần được.
 **Control:** không cần — nó là phép đếm.
+**Đã làm:** `generate.py` in *"111 trong 261 entry point chưa có hợp đồng"*, kèm
+số theo từng file, nhiều nhất trước: `src/efi_bs.asm` 27, `efi_file.asm` 15,
+`efi_proto.asm` 15, `init64.asm` 14.
 
 ---
 

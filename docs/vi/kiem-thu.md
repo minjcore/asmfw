@@ -24,6 +24,7 @@ trước đó đã chạy xong và vấn đề nằm ở bước ngay sau.
 make check          cả hai đĩa, rồi cả hai control        — 47 assertion
 make check-fw       chỉ firmware và payload nó boot
 make check-kernel   chỉ kernel
+make check-docs     chỉ số dòng trong tài liệu module — `check` chạy nó đầu tiên
 ```
 
 | Nhóm | Số assertion |
@@ -133,20 +134,21 @@ Khi trap frame in ra một địa chỉ, cách quay lại dòng code:
 
 - **Firmware** — `build/fw.lst` được ghi ra ở **mọi** lần build, tại địa chỉ cuối
   cùng. Đó là bản đồ symbol duy nhất tồn tại. Tra trực tiếp.
-- **Kernel** — mặc định không có listing; tự tạo một cái. Vì kernel là `org 0`,
-  phải **trừ đi** địa chỉ nạp mà firmware đã in ra (`[BDS] image at ...`) khỏi
+- **Kernel** — `build/kernel.lst` được ghi ra ở mọi lần build kernel (`make lstk`
+  để gọi đích danh). Vì kernel là `org 0`, phải **trừ đi** địa chỉ nạp mà firmware đã in ra (`[BDS] image at ...`) khỏi
   `RIP` bị fault.
-- **Program** — trừ đi địa chỉ base của window mà kernel đã in cho task đó.
+- **Program** — `build/maze.lst`, `count.lst`, `rogue.lst`, `type.lst`, cùng lần
+  build đó. Trừ đi địa chỉ base của window mà kernel đã in cho task đó.
 
 Và `CS` trong frame nói cho bạn biết đang ở đâu: `cs 002b` là ring 3 (nên offset
 là `rip - window`), `cs 0008` là chính kernel (nên là `rip - image base`).
 
 ## Kiểm tra tài liệu
 
-Ngoài `make check`, còn một bài kiểm tra nữa — cho chính tài liệu:
+`make check` còn kiểm một thứ nữa, trước cả khi boot — chính tài liệu:
 
 ```
-python3 docs/verify.py
+make check-docs        # tức là python3 docs/verify.py
 ```
 
 Các file trong `docs/modules/` và `docs/vi/modules/` được sinh từ source — một
