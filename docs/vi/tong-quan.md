@@ -84,7 +84,7 @@ BDS   tìm EFI system partition (GPT, hoặc MBR type 0xEF)
               ▼
         tự dựng page table, GDT, TSS, IDT, PIC, PIT, keyboard, SYSCALL
         đọc 4 program từ đĩa bằng driver ATA/GPT/FAT32 của chính nó
-        iretq vào ring 3 — bốn task chạy round robin
+        iretq vào ring 3 — năm task chạy round robin
 ```
 
 Bốn cụm chữ `SEC`, `PEI`, `DXE`, `BDS` là tên các phase theo chuẩn UEFI. Chúng

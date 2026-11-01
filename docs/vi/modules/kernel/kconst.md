@@ -1,5 +1,5 @@
 # kconst.inc
-[`kernel/kconst.inc`](../../../../kernel/kconst.inc) — 379 dòng, 0 entry point.
+[`kernel/kconst.inc`](../../../../kernel/kconst.inc) — 380 dòng, 0 entry point.
 
 What the kernel is built out of.
 
@@ -7,7 +7,7 @@ What the kernel is built out of.
 
 Macro: `PUSH_GPRS`, `POP_GPRS`, `KSTR`, `kputs`, `kputsi`
 
-Hằng số: 170.
+Hằng số: 171.
 
 ## Phụ thuộc
 

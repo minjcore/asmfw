@@ -35,7 +35,7 @@ permanently. A change to `src/` has to be checked against both.
 | `src/*.asm` | `make` | `make serial` **and** `make serialk` | `make ovmf` |
 | `src/const.inc`, `src/efi.inc`, `src/macros.inc` | `make clean && make && make kernel` | both | both |
 | `kernel/*.asm`, `kernel/kconst.inc` | `make kernel` | `make serialk` | `make ovmfk` |
-| `kernel/uabi.inc` | `make kernel` — rebuilds the kernel *and* all four programs | `make serialk` | `make ovmfk` |
+| `kernel/uabi.inc` | `make kernel` — rebuilds the kernel *and* all five programs | `make serialk` | `make ovmfk` |
 | `kernel/progs/*` | `make kernel` | `make serialk` | `make ovmfk` |
 | `payload/hello.asm` | `make` | `make serial` | `make ovmf` — mandatory; the payload *is* the control |
 | `tools/mkesp.py` | `make clean && make && make kernel` | both | both |
@@ -72,7 +72,7 @@ produced it and why it is correct.
 ## 3. Boot it, and check the log
 
 ```
-make check          both disks, then the same two under OVMF   -- 51 assertions
+make check          both disks, then the same two under OVMF   -- 60 assertions
 make check-fw       the firmware and the payload it boots
 make check-kernel   the kernel only
 make check-docs     every line number in the module docs against the source

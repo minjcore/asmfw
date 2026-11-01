@@ -121,6 +121,7 @@ kernel/
     count.asm       print a line, sleep, repeat
     rogue.asm       go looking for memory that is not its own
     type.asm        wait for a keystroke, which no clock can produce
+    lisp.asm        a Lisp: reader, evaluator, printer, garbage collector
 tools/
   mkfont.py         font generator
   mkesp.py          GPT + FAT32 disk builder
@@ -172,7 +173,7 @@ virtual wire       the local APIC's LINT0 as ExtINT, without which the 8259
 i8042 on IRQ1      translation on, break codes seen, keys queued
 SYSCALL/SYSRET     EFER.SCE, STAR, LSTAR, FMASK
 own disk stack     ATA PIO, GPT, FAT32 -- the firmware's went away with it
-iretq              into four tasks that run at CPL 3, round robin
+iretq              into five tasks that run at CPL 3, round robin
 ```
 
 System calls run with interrupts on, so a task can be preempted inside one.
@@ -194,8 +195,9 @@ file. What that buys is that a task which has never run and a task which was
 interrupted mid-instruction are the same shape, and one code path starts both
 — `task_create` simply writes down the frame the interrupt would have left.
 
-The four tasks are four separate programs, read off the disk by the kernel
-after the firmware is gone, and they end four different ways.
+The five tasks are five separate programs, read off the disk by the kernel
+after the firmware is gone. The first four end four different ways; the fifth
+is a Lisp.
 
 A program is a flat binary: no headers, no relocations, an entry point at
 offset zero. The kernel reads it straight into the window it will run in and
@@ -234,7 +236,25 @@ uptime beside it, and gives up after three seconds of silence, which is what
 happens under `make serialk`: with no display, QEMU has no keyboard to give
 it. Enter ends it either way.
 
-None of the four takes the machine with it. That is what the arrangement
+**Task 4** (`\PROGS\LISP.BIN`) is a Lisp interpreter: integers, symbols,
+conses, closures, and `quote` `if` `define` `lambda` `let` `begin` `set!`
+`cond` `and` `or`, over 22 primitives. It runs a demo script embedded in the
+binary, printing each expression and its value, then reads expressions from
+the keyboard at a `lisp>` prompt — balancing parentheses across lines,
+honouring backspace — until Esc or five seconds of silence.
+
+Two things in it are worth reading for their own sake. The evaluator handles
+every tail position — `if`, a body's last form, `cond`, `and`, `or` — by
+jumping rather than calling, so the demo's `(sum-to 100000 0)` runs in
+constant stack. And the heap of 32768 32-byte cells has a mark-and-sweep
+collector that is *conservative* about the stack: any word on it that looks
+like the address of a live object keeps that object alive. That is what lets
+the interpreter be ordinary assembly, holding values in registers and pushing
+them like anything else, with no root list maintained by hand. The demo
+allocates over a million cells through those 32768, and the line after it says
+how many collections that took.
+
+None of the five takes the machine with it. That is what the arrangement
 exists to demonstrate.
 
 The kernel runs under OVMF too, at a completely different load address, and
@@ -296,6 +316,14 @@ applied to something considerably easier to get subtly wrong.
 - **The kernel's console is text only.** `sys_write` is the whole output path,
   so the maze is drawn in characters. Ring 3 cannot reach the framebuffer:
   it is outside the user window, which is the point.
+- **The Lisp is small on purpose.** Integers only, 62 bits and unchecked for
+  overflow; no strings, floats, vectors or macros; `define` always binds
+  globally, even inside a body. Errors print and return to the prompt. Symbol
+  names are never freed, and the heap is fixed at 32768 cells.
+- **Two tasks read the one keyboard.** Task 3 and the Lisp both block in
+  `sys_read`, and a keystroke goes to whichever is scheduled first. Task 3
+  gives up after three silent seconds, so the Lisp prompt says to type after
+  that; typed sooner, keys are shared between them.
 - **The kernel never returns to the firmware.** Which is correct — after
   `ExitBootServices` there is nothing to return to. When the last task has
   ended it halts, and when every task is merely blocked it idles on `hlt`
@@ -311,8 +339,8 @@ transcript.
 `make check` boots both disks under a timeout — nothing here exits QEMU, both
 images halt on purpose — and asserts that the transcript still contains the
 landmarks it contained before: every phase marker in order, the payload's ACPI
-checksums and what `ConIn` returned, the kernel's bring-up lines, and all four
-task endings, including the two that are deaths. One assertion is negative:
+checksums and what `ConIn` returned, the kernel's bring-up lines, all four
+task endings, the Lisp demo's results, including the two that are deaths. One assertion is negative:
 `cs 0008` in a trap frame is a trap taken in ring 0, and if it appears the
 kernel itself has gone wrong. Then it runs the same two disks under OVMF,
 which is the only comparison that can tell a firmware bug from a payload bug.

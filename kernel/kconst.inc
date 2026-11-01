@@ -220,7 +220,7 @@ KBD_BUF_MASK    equ KBD_BUF_SIZE - 1
 ; is a store of RSP into T_RSP and a load of the next task's, which is why
 ; there is no register save area in the structure.
 ; ---------------------------------------------------------------------------
-TASK_COUNT      equ 4
+TASK_COUNT      equ 5
 
 T_STATE         equ 0x00
 T_PML4          equ 0x08
@@ -326,6 +326,7 @@ KC_NUMBUF_SIZE  equ 24
 
 CHAR_LF         equ 10
 CHAR_CR         equ 13
+CHAR_BS         equ 8
 
 ; ---------------------------------------------------------------------------
 ; The parts of the UEFI ABI the kernel uses before it stops using any of it

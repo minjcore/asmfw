@@ -506,6 +506,7 @@ prog_names:     db "MAZE    BIN"
                 db "COUNT   BIN"
                 db "ROGUE   BIN"
                 db "TYPE    BIN"
+                db "LISP    BIN"
 
 align 8
 gop_guid:                                   ; 9042A9DE-23DC-4A38-96FB-7ADED080516A

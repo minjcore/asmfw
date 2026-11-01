@@ -18,10 +18,10 @@ boot máy dưới một timeout rồi kiểm tra transcript vẫn chứa đúng 
 Nghĩa là khi có lỗi, bạn không phải đoán. Log dừng ở `[DXE] ATA:` thì mọi thứ
 trước đó đã chạy xong và vấn đề nằm ở bước ngay sau.
 
-## 51 assertion
+## 60 assertion
 
 ```
-make check          cả hai đĩa, rồi cả hai control        — 51 assertion
+make check          cả hai đĩa, rồi cả hai control        — 60 assertion
 make check-fw       chỉ firmware và payload nó boot
 make check-kernel   chỉ kernel
 make check-docs     chỉ số dòng trong tài liệu module — `check` chạy nó đầu tiên
@@ -30,7 +30,7 @@ make check-docs     chỉ số dòng trong tài liệu module — `check` chạy
 | Nhóm | Số assertion |
 | --- | --- |
 | firmware + payload | 23 |
-| kernel | 22 (21 dòng bắt buộc có + 1 dòng bắt buộc **không** được có) |
+| kernel | 32 (30 dòng bắt buộc có + 2 dòng bắt buộc **không** được có) |
 | control OVMF | 6 |
 
 Một assertion là **phủ định**: `cs 0008` trong một trap frame nghĩa là trap xảy
@@ -154,7 +154,7 @@ make check-docs        # tức là python3 docs/verify.py
 Các file trong `docs/modules/` và `docs/vi/modules/` được sinh từ source — một
 file cho mỗi file source — và mỗi dòng nêu tên một symbol kèm số dòng nó được
 định nghĩa. Số dòng là loại tài liệu **mục âm thầm**: một label dịch chỗ, link vẫn
-resolve được, dòng vẫn trông đúng. `verify.py` tính lại toàn bộ 722 khẳng định đó
+resolve được, dòng vẫn trông đúng. `verify.py` tính lại toàn bộ 832 khẳng định đó
 và nêu tên những cái đã lệch.
 
 Nó **không** kiểm tra được một hợp đồng có còn đúng hay không. Một hàm bị đổi quy

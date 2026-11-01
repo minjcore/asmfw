@@ -218,6 +218,8 @@ kfb_putc:
     je      .carriage
     cmp     al, CHAR_LF
     je      .newline
+    cmp     al, CHAR_BS
+    je      .backspace
     cmp     al, FONT_FIRST
     jb      .done
     cmp     al, FONT_LAST
@@ -285,6 +287,13 @@ kfb_putc:
     jmp     .done
 .carriage:
     mov     dword [rel kc_x], 0
+    jmp     .done
+    ; Back one cell, never past the start of the line; what was there stays
+    ; until something is drawn over it, so erasing is BS, space, BS.
+.backspace:
+    cmp     dword [rel kc_x], 0
+    je      .done
+    dec     dword [rel kc_x]
 .done:
     pop     r11
     pop     r10

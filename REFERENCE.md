@@ -1002,7 +1002,7 @@ there is no loader that could resolve a call between two images.
 | `u_hex` | RAX = value, RDI = destination, ECX = digits — in place, over a placeholder in a message |
 | `u_dec` | RAX = value, RDI = destination, ECX = digits — filled from the right, fixed width |
 
-### 8.4 The four programs
+### 8.4 The five programs
 
 | Task | Program | Ends by |
 | --- | --- | --- |
@@ -1010,6 +1010,7 @@ there is no loader that could resolve a call between two images.
 | 1 | `\PROGS\COUNT.BIN` | executing `cli`, and being killed by the `#GP` that follows |
 | 2 | `\PROGS\ROGUE.BIN` | `#PF` error 5, reading a neighbour's window directly, after being refused at the syscall boundary first |
 | 3 | `\PROGS\TYPE.BIN` | `sys_exit`, after a keystroke or three seconds of silence |
+| 4 | `\PROGS\LISP.BIN` | `sys_exit`, after its demo and a REPL that closes on Esc or five seconds of silence |
 
 Adding one means touching `PROGS` and a rule in the `Makefile`, `prog_names` in
 [kernel/kernel.asm](kernel/kernel.asm), `TASK_COUNT` in

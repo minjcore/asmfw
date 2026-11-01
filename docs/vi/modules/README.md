@@ -59,14 +59,14 @@ Kernel mà firmware boot lên. Tường thuật: REFERENCE.md §7.
 | [idt.asm](kernel/idt.md) | 271 | 7 | Traps |
 | [kata.asm](kernel/kata.md) | 261 | 6 | ATA PIO, because the firmware's block driver went away |
 | [kbd.asm](kernel/kbd.md) | 359 | 7 | The keyboard, on an interrupt |
-| [kcon.asm](kernel/kcon.md) | 397 | 13 | The kernel's own console |
-| [kernel.asm](kernel/kernel.md) | 553 | 3 | A kernel that asmfw boots, and that gets to ring 3 |
+| [kcon.asm](kernel/kcon.md) | 406 | 13 | The kernel's own console |
+| [kernel.asm](kernel/kernel.md) | 554 | 3 | A kernel that asmfw boots, and that gets to ring 3 |
 | [kfat.asm](kernel/kfat.md) | 310 | 5 | Reading FAT32, again |
 | [kgpt.asm](kernel/kgpt.md) | 118 | 1 | Find the EFI system partition |
 | [paging.asm](kernel/paging.md) | 84 | 1 | Address spaces |
 | [sched.asm](kernel/sched.md) | 516 | 16 | More than one thing at a time |
 | [syscall.asm](kernel/syscall.md) | 356 | 9 | The door between the rings |
-| [kconst.inc](kernel/kconst.md) | 379 | 0 | What the kernel is built out of |
+| [kconst.inc](kernel/kconst.md) | 380 | 0 | What the kernel is built out of |
 | [uabi.inc](kernel/uabi.md) | 30 | 0 | The contract between the kernel and a program |
 
 
@@ -77,6 +77,7 @@ Bốn program ring 3 và thư viện dùng chung. Tường thuật: REFERENCE.md
 | File | Dòng | Entry point | Nội dung |
 | --- | --- | --- | --- |
 | [count.asm](kernel/progs/count.md) | 101 | 1 | A program: print a line, burn time, repeat |
+| [lisp.asm](kernel/progs/lisp.md) | 2053 | 53 | A Lisp, in ring 3, with a garbage collector |
 | [maze.asm](kernel/progs/maze.md) | 462 | 10 | A program: generate a maze, solve it, draw it |
 | [rogue.asm](kernel/progs/rogue.md) | 94 | 1 | A program that goes looking for memory that is not its own |
 | [type.asm](kernel/progs/type.md) | 163 | 1 | A program that waits for something the machine cannot produce |
@@ -93,4 +94,4 @@ Bốn program ring 3 và thư viện dùng chung. Tường thuật: REFERENCE.md
 
 ---
 
-45 module. Tài liệu tường thuật ở `REFERENCE.md`; giải thích bằng tiếng Việt ở [../](../README.md).
+46 module. Tài liệu tường thuật ở `REFERENCE.md`; giải thích bằng tiếng Việt ở [../](../README.md).

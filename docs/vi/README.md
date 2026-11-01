@@ -12,7 +12,7 @@ sao code lại có hình dạng như vậy. Nó không phải bản dịch của
 | 1 | [tong-quan.md](tong-quan.md) | Dự án này là gì, hai nửa firmware/kernel, luồng boot từ đầu đến cuối, và các giới hạn |
 | 2 | [firmware.md](firmware.md) | Firmware: flash volume, bốn phase SEC/PEI/DXE/BDS, lớp EFI, các quy ước trong code |
 | 3 | [kernel.md](kernel.md) | Kernel: ranh giới `ExitBootServices`, cô lập task bằng page table, scheduler, khoá console, virtual wire |
-| 4 | [chuong-trinh.md](chuong-trinh.md) | Payload và bốn program — mỗi cái chứng minh điều gì; ABI và bảy system call |
+| 4 | [chuong-trinh.md](chuong-trinh.md) | Payload và năm program — mỗi cái chứng minh điều gì; ABI và bảy system call |
 | 5 | [kiem-thu.md](kiem-thu.md) | Kiểm thử một cái máy đang reset: landmark, control OVMF, đọc log, tìm dòng source từ `RIP` |
 | 6 | [he-thong-tai-lieu.md](he-thong-tai-lieu.md) | Bản thân hệ thống tài liệu: cái gì sinh tự động, cách sinh lại và kiểm tra, và những lỗi đợt rà soát vừa rồi tìm ra |
 | 7 | [ke-hoach-nang-cap.md](ke-hoach-nang-cap.md) | Kế hoạch nâng cấp, xếp theo giá trị / công sức — mỗi việc kèm code đã có gì và control nào chứng minh nó đúng |

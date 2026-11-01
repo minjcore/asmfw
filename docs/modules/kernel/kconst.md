@@ -1,5 +1,5 @@
 # kconst.inc
-[`kernel/kconst.inc`](../../../kernel/kconst.inc) — 379 lines, 0 entry points.
+[`kernel/kconst.inc`](../../../kernel/kconst.inc) — 380 lines, 0 entry points.
 
 What the kernel is built out of.
 
@@ -7,7 +7,7 @@ What the kernel is built out of.
 
 Macros: `PUSH_GPRS`, `POP_GPRS`, `KSTR`, `kputs`, `kputsi`
 
-Constants: 170.
+Constants: 171.
 
 ## Dependencies
 

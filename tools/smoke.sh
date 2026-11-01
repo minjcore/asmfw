@@ -104,7 +104,7 @@ check_fw() {
 }
 
 # ---------------------------------------------------------------------------
-# The kernel: bring-up, then four tasks that end four different ways.
+# The kernel: bring-up, four tasks that end four different ways, and a Lisp.
 #
 # The assertion is not that the tasks run. It is that none of them takes the
 # machine with it -- task 1 dies of #GP, task 2 of #PF, and the log still
@@ -136,6 +136,15 @@ check_kernel() {
     want "$log" "kernel   task 2 killed; the others keep running"
     want "$log" "task 3   loaded from \\PROGS\\TYPE.BIN"
     want "$log" "kernel   task 3 exited, status 0"
+    want "$log" "task 4   = 2432902008176640000"    # (fact 20)
+    want "$log" "task 4   = (1 4 9 16 25)"          # map, lambda, quote
+    want "$log" "task 4   = 6765"                   # (fib 20)
+    want "$log" "task 4   = 2"                      # a closure's second call
+    want "$log" "task 4   = 5000050000"             # 100000 tail calls
+    want "$log" "task 4   error: unbound symbol no-such-function"
+    want "$log" "task 4   demo done; the collector ran"
+    deny "$log" "the collector ran 0 times"
+    want "$log" "kernel   task 4 exited, status 0"
     want "$log" "kernel   every task has ended after"
     want "$log" "kernel   nothing left to run; halted"
 

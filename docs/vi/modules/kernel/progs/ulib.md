@@ -20,6 +20,7 @@ Assembled into each program rather than shared at run time: there is no loader t
 Bị gọi bởi:
 
 - [count.asm](count.md) — `u_dec`, `u_exit`, `u_write`
+- [lisp.asm](lisp.md) — `u_exit`, `u_read`, `u_write`
 - [maze.asm](maze.md) — `u_dec`, `u_exit`, `u_hex`, `u_write`
 - [rogue.asm](rogue.md) — `u_exit`, `u_hex`, `u_write`
 - [type.asm](type.md) — `u_dec`, `u_exit`, `u_hex`, `u_read`, `u_write`

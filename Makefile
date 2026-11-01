@@ -18,7 +18,7 @@ KESP   := $(BUILD)/kernel.img
 KLST   := $(BUILD)/kernel.lst
 KSTAGE := $(BUILD)/kernel
 KSRCS  := $(wildcard kernel/*.asm) $(wildcard kernel/*.inc) src/font.inc
-PROGS  := MAZE.BIN COUNT.BIN ROGUE.BIN TYPE.BIN
+PROGS  := MAZE.BIN COUNT.BIN ROGUE.BIN TYPE.BIN LISP.BIN
 PROGBIN := $(addprefix $(KSTAGE)/,$(PROGS))
 
 FW_SRCS := $(wildcard src/*.asm) $(wildcard src/*.inc)
@@ -92,12 +92,15 @@ $(KSTAGE)/ROGUE.BIN: kernel/progs/rogue.asm $(PROGDEPS) | $(KSTAGE)
 $(KSTAGE)/TYPE.BIN: kernel/progs/type.asm $(PROGDEPS) | $(KSTAGE)
 	$(NASM) $(PROGFLAGS) -o $@ -l $(BUILD)/type.lst $<
 
+$(KSTAGE)/LISP.BIN: kernel/progs/lisp.asm $(PROGDEPS) | $(KSTAGE)
+	$(NASM) $(PROGFLAGS) -o $@ -l $(BUILD)/lisp.lst $<
+
 # Listings, the symbol map for turning a faulting RIP back into a line. They
 # are written by every kernel build, as fw.lst is by every firmware build;
 # this target exists so asking for one by name works too. The kernel is
 # assembled at org 0: subtract the image base the firmware printed. A
 # program's offset is rip minus the window the kernel printed for that task.
-PLSTS := $(addprefix $(BUILD)/,maze.lst count.lst rogue.lst type.lst)
+PLSTS := $(addprefix $(BUILD)/,maze.lst count.lst rogue.lst type.lst lisp.lst)
 
 lstk: $(KLST) $(PLSTS)
 	@ls -1 $^

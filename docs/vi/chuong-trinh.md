@@ -1,4 +1,4 @@
-# Payload và bốn program: mỗi cái tồn tại để chứng minh một điều
+# Payload và năm program: mỗi cái tồn tại để chứng minh một điều
 
 Dự án này có năm chương trình không thuộc firmware và cũng không thuộc kernel.
 Mỗi cái tồn tại để chứng minh một điều cụ thể, và cái điều đó là lý do duy nhất
@@ -93,7 +93,7 @@ Hai chi tiết trong cách nó báo cáo:
 chính vì vậy**: một firmware trả về sai chữ thì không phân biệt được với một
 firmware hoạt động đúng, cho tới khi có người hỏi một phím cụ thể.
 
-## Bốn program của kernel
+## Năm program của kernel
 
 Một program là **binary phẳng**: không header, không relocation, entry point ở
 offset 0. Kernel đọc nó thẳng vào window mà nó sẽ chạy trong đó rồi khởi động —
@@ -108,7 +108,7 @@ nên mọi tham chiếu trong nó phải RIP-relative, và mọi thứ nó biế
 
 `RSP` bắt đầu ở đỉnh window. Đó là toàn bộ cái loader.
 
-Bốn program kết thúc bằng **bốn cách khác nhau**, và đó mới là điểm chính:
+Bốn program đầu kết thúc bằng **bốn cách khác nhau**, và đó mới là điểm chính; cái thứ năm là một Lisp:
 
 | Task | Program | Kết thúc bằng |
 | --- | --- | --- |
@@ -116,6 +116,7 @@ Bốn program kết thúc bằng **bốn cách khác nhau**, và đó mới là 
 | 1 | `COUNT.BIN` | thực thi `cli` và bị `#GP` giết |
 | 2 | `ROGUE.BIN` | `#PF` error 5, đọc window của láng giềng |
 | 3 | `TYPE.BIN` | `sys_exit`, sau một phím bấm hoặc ba giây im lặng |
+| 4 | `LISP.BIN` | `sys_exit`, sau demo và một REPL đóng khi bấm Esc hoặc im lặng năm giây |
 
 **Task 0 — mê cung.** Sinh mê cung 39×19 bằng DFS ngẫu nhiên, giải nó, vẽ ra. Nó
 **không bao giờ yield**, nên mỗi lần nó biến mất khỏi output một lúc là vì timer
@@ -145,7 +146,23 @@ trước — deadline của người ngủ, thời điểm nhả khoá — nên 
 một phép tính đã làm xong. Một task block trên thiết bị có thể để cái máy **thật
 sự rảnh trong khi vẫn còn việc chưa xong**, chừng nào chưa ai bấm gì.
 
-Không có task nào trong bốn cái mang cái máy đi theo nó. Đó là điều cả cái sắp
+**Task 4 — Lisp.** Một trình thông dịch Lisp hoàn chỉnh trong 9 KB: số nguyên,
+symbol, cons, closure; các special form `quote` `if` `define` `lambda` `let`
+`begin` `set!` `cond` `and` `or`; 22 primitive. Nó chạy một script demo nhúng
+sẵn — in từng biểu thức và giá trị — rồi mở dấu nhắc `lisp>` đọc từ bàn phím
+(ngoặc chưa cân thì đọc tiếp dòng sau, có backspace) cho tới khi bấm Esc hoặc im
+lặng năm giây.
+
+Hai chỗ đáng đọc. **Tail call**: mọi vị trí đuôi — `if`, dạng cuối của một
+body, `cond`, `and`, `or` — được xử lý bằng *nhảy* thay vì *gọi*, nên
+`(sum-to 100000 0)` chạy với stack không đổi. **Bộ thu gom rác** mark-and-sweep
+trên heap 32768 ô 32 byte, *bảo thủ* với stack: bất kỳ word nào trên stack trông
+giống địa chỉ một object còn sống thì giữ object đó lại. Nhờ vậy evaluator chỉ là
+assembly bình thường — giữ giá trị trong thanh ghi, push như mọi thứ khác — không
+phải tự tay duy trì danh sách root. Demo cấp phát hơn một triệu ô qua 32768 ô đó,
+và dòng ngay sau nó cho biết GC đã chạy bao nhiêu lần.
+
+Không có task nào trong năm cái mang cái máy đi theo nó. Đó là điều cả cái sắp
 đặt này tồn tại để chứng minh.
 
 ## `ulib.inc` — toàn bộ thư viện của userspace

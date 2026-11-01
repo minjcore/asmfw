@@ -1,5 +1,5 @@
 # kcon.asm
-[`kernel/kcon.asm`](../../../../kernel/kcon.asm) — 397 dòng, 13 entry point.
+[`kernel/kcon.asm`](../../../../kernel/kcon.asm) — 406 dòng, 13 entry point.
 
 The kernel's own console.
 
@@ -19,9 +19,9 @@ It exists because the firmware's does not survive ExitBootServices. ConOut is a 
 | `kc_puthex64` | [168](../../../../kernel/kcon.asm#L168) | — |
 | `kc_putdec` | [178](../../../../kernel/kcon.asm#L178) | RAX, unsigned |
 | `kfb_putc` | [205](../../../../kernel/kcon.asm#L205) | AL, straight into the framebuffer |
-| `kfb_scroll` | [304](../../../../kernel/kcon.asm#L304) | shift the picture up by one glyph row and clear what it left |
-| `kser_init` | [340](../../../../kernel/kcon.asm#L340) | — |
-| `kser_putc` | [368](../../../../kernel/kcon.asm#L368) | — |
+| `kfb_scroll` | [313](../../../../kernel/kcon.asm#L313) | shift the picture up by one glyph row and clear what it left |
+| `kser_init` | [349](../../../../kernel/kcon.asm#L349) | — |
+| `kser_putc` | [377](../../../../kernel/kcon.asm#L377) | — |
 
 ## Định nghĩa
 

@@ -1,5 +1,5 @@
 # kernel.asm
-[`kernel/kernel.asm`](../../../../kernel/kernel.asm) — 553 dòng, 3 entry point.
+[`kernel/kernel.asm`](../../../../kernel/kernel.asm) — 554 dòng, 3 entry point.
 
 A kernel that asmfw boots, and that gets to ring 3.
 

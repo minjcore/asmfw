@@ -1,5 +1,5 @@
 # kernel.asm
-[`kernel/kernel.asm`](../../../kernel/kernel.asm) — 553 lines, 3 entry points.
+[`kernel/kernel.asm`](../../../kernel/kernel.asm) — 554 lines, 3 entry points.
 
 A kernel that asmfw boots, and that gets to ring 3.
 
