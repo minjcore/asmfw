@@ -58,6 +58,7 @@ BUF_DIR         equ 0x00386000                  ; one directory cluster, max 64 
 BUF_FILE        equ 0x00396000                  ; one file cluster, for File->Read
 BUF_NAME83      equ 0x003A6000                  ; one 8.3 name being assembled
 BUF_NAME16      equ 0x003A6020                  ; one name being spelled out as CHAR16
+BUF_LFN         equ 0x003A6400                  ; a long name, 260 CHAR16 and a NUL
 BUF_FWCFG_DIR   equ 0x003B0000                  ; the fw_cfg file directory, 16 KiB
 BUF_ACPI_LOADER equ 0x003B4000                  ; etc/table-loader, as downloaded
 ACPI_BLOB_TABLE equ 0x003C4000                  ; where each ACPI blob was placed
@@ -138,6 +139,12 @@ GVAR g_bs_exited,     4     ; set once ExitBootServices has been called
 GVAR g_var_store,     8     ; the variable records, runtime services data
 GVAR g_exit_rsp,      8     ; stack to unwind to when the image calls Exit
 GVAR g_current_image, 8     ; the handle of the image running now
+GVAR g_lfn_next,      4     ; the fragment number expected next, 0 when complete
+GVAR g_lfn_ok,        4     ; a long name is being gathered and is intact so far
+GVAR g_lfn_csum,      4     ; the short-name checksum its fragments carry
+GVAR g_lfn_hit,       4     ; fat_dir_nth's entry has a long name, in BUF_LFN
+GVAR g_want_long,     8     ; fat_lookup_long's component, CHAR16
+GVAR g_want_len,      4     ; and its length in characters
 GVAR g_virtual,       4     ; set once SetVirtualAddressMap has run
 GVAR g_vmap,          8     ; the OS's map, only while that call runs
 GVAR g_vmap_size,     8

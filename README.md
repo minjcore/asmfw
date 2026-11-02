@@ -59,7 +59,7 @@ and the framebuffer.
 | `EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL` | full, including `SetAttribute` against the standard 16-colour palette |
 | `EFI_SIMPLE_TEXT_INPUT_PROTOCOL` | polled i8042, scan code set 1, arrows and Esc mapped; unshifted only |
 | `EFI_GRAPHICS_OUTPUT_PROTOCOL` | one mode; `Blt` implements all four operations |
-| `EFI_SIMPLE_FILE_SYSTEM_PROTOCOL` | read-only FAT32 |
+| `EFI_SIMPLE_FILE_SYSTEM_PROTOCOL` | read-only FAT32, long names included |
 | `EFI_FILE_PROTOCOL` | `Open`, `Read`, `GetInfo`, `SetPosition`; directories enumerate |
 | `EFI_BLOCK_IO_PROTOCOL` | the whole disk, read-only |
 | `EFI_LOADED_IMAGE_PROTOCOL` | on the started image |
@@ -360,7 +360,10 @@ applied to something considerably easier to get subtly wrong.
   it, is unchanged. Only a few kilobytes of it are runtime code.
 - **Load options come from a file.** `\EFI\BOOT\CMDLINE`, ASCII, first line
   only, because there is no `Boot####` variable to carry them.
-- **FAT32 short names only.** Long-name entries are skipped, not decoded.
+- **Long names in the firmware, not yet in the kernel.** The firmware's FAT
+  reader decodes long names — opens by them, case-insensitively, and lists
+  them — but `GetInfo` on an open file still reports its short name, and the
+  kernel's own reader (`kernel/kfat.asm`) still knows short names only.
 - **`LoadImage` takes a buffer, not a device path.** With no `SourceBuffer`
   it returns `EFI_NOT_FOUND`: resolving a device path to a file is not done.
   At most eight images per boot, and an unloaded image's memory is not given
@@ -393,7 +396,7 @@ applied to something considerably easier to get subtly wrong.
   does track shift, which is the whole difference between the two.
 - **The kernel's storage stack is the minimum that boots it.** Primary master
   only, polled PIO, LBA28, read only; GPT only, no MBR fallback; FAT32 with
-  short names only. This is why `make ovmfk` uses the i440fx machine and not
+  short names only (the firmware's reader has long names; this one does not yet). This is why `make ovmfk` uses the i440fx machine and not
   q35 — the kernel drives the legacy ATA ports itself, and q35's disk is
   behind AHCI.
 - **The kernel's console is text only.** `sys_write` is the whole output path,

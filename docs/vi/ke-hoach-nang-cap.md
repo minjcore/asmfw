@@ -82,7 +82,7 @@ structure thay vì 8 — OVMF tự thêm type 0. Control còn bắt được m�
 trong chính payload: một chuỗi byte lẻ chèn trước các chuỗi CHAR16 làm chúng lệch
 căn 2 byte; asmfw không để ý, OVMF treo trong `Open()`.
 
-### 1.2 FAT32 tên dài (LFN)
+### 1.2 FAT32 tên dài (LFN) — ✅ phần firmware xong (2026-11-02); kernel chưa
 
 **Đã có:** cả hai reader đã **nhận diện** entry LFN (`ATTR_LFN` = `0x0F`) và bỏ
 qua chúng.
@@ -95,6 +95,14 @@ một lần "trả nợ".
 do người khác tạo.
 **Control:** tạo một đĩa có tên dài bằng `mtools`, mount dưới OVMF và dưới asmfw,
 so danh sách file.
+**Đã làm (firmware, `src/fat.asm`):** gom các mảnh LFN (thứ tự ngược, kiểm số thứ
+tự liền mạch và checksum của tên 8.3 đi kèm — mảnh hỏng thì bỏ, tên ngắn đứng
+một mình như spec yêu cầu); `Open` khớp theo tên dài không phân biệt hoa thường
+*hoặc* tên 8.3; liệt kê thư mục trả tên dài. Payload mở
+`\Long File Name Test.txt`, mở lại bằng `\LONG file NAME test.TXT`, và tìm thấy
+nó trong danh sách thư mục gốc đúng nguyên văn. OVMF y hệt; với reader cũ thì
+hỏng ở bước 1. **Còn lại:** `GetInfo` của file đã mở vẫn trả tên ngắn; reader
+của kernel (`kfat.asm`) chưa làm.
 
 ### 1.3 `LoadImage` / `StartImage` — ✅ đã xong (2026-11-01)
 

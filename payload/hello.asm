@@ -117,6 +117,9 @@ BS_LOADIMAGE        equ 0xC8
 BS_STARTIMAGE       equ 0xD0
 BS_EXIT             equ 0xD8
 F_SETPOSITION       equ 0x38
+FI_FILENAME         equ 0x50            ; in EFI_FILE_INFO, after the fixed fields
+FI_BUF_SIZE         equ 1024
+LFN_TEXT_LEN        equ 23              ; "asmfw reads long names\n"
 LI_PARENTHANDLE     equ 0x08
 LI_LOADOPTIONSSIZE  equ 0x30
 LI_LOADOPTIONS      equ 0x38
@@ -329,6 +332,7 @@ efi_main:
             call    show_vars
             call    show_memmap
             call    show_chain
+            call    show_lfn
 
 .graphics:
             ; --- graphics ---------------------------------------------------
@@ -1352,6 +1356,109 @@ show_chain:
             ret
 
 ; ----------------------------------------------------------------------------
+; show_lfn -- a file whose name does not fit 8.3: open it by that name, open it
+; again with the case changed, and find it in a listing of the root under its
+; long name, exactly as written.
+;
+; The short name is a mangled alias (LONGFI~1.TXT or similar) that the
+; volume's writer chose; a firmware that ignores long names can only offer
+; that, and every one of these steps fails against it.
+; ----------------------------------------------------------------------------
+show_lfn:
+            push    rbx
+            push    rsi
+            push    rdi
+            push    r12
+            push    r13
+            push    rbp
+            sub     rsp, 56
+            mov     ebp, 1
+            mov     rbx, [rel g_root]
+            test    rbx, rbx
+            jz      .fail
+
+            ; --- 1, 2: open by the long name, then with its case changed -----
+            lea     r12, [rel s_lfn_path]
+.open:
+            mov     rcx, rbx
+            lea     rdx, [rel g_lfile]
+            mov     r8, r12
+            mov     r9, EFI_FILE_MODE_READ
+            mov     qword [rsp + 0x20], 0
+            call    [rbx + F_OPEN]
+            test    rax, rax
+            jnz     .fail
+            mov     qword [rel g_readlen], 64
+            mov     rcx, [rel g_lfile]
+            lea     rdx, [rel g_readlen]
+            lea     r8, [rel g_vbuf]
+            mov     rax, [rel g_lfile]
+            call    [rax + F_READ]
+            test    rax, rax
+            jnz     .fail
+            cmp     qword [rel g_readlen], LFN_TEXT_LEN
+            jne     .fail
+            lea     rsi, [rel lfn_text]
+            lea     rdi, [rel g_vbuf]
+            mov     ecx, LFN_TEXT_LEN
+            repe    cmpsb
+            jne     .fail
+            inc     ebp
+            lea     rax, [rel s_lfn_path_case]
+            cmp     r12, rax
+            je      .listing
+            mov     r12, rax
+            jmp     .open
+
+            ; --- 3: the root's listing names it as written --------------------
+.listing:
+            mov     rcx, rbx
+            xor     edx, edx
+            call    [rbx + F_SETPOSITION]
+            test    rax, rax
+            jnz     .fail
+.entry:
+            mov     qword [rel g_readlen], FI_BUF_SIZE
+            mov     rcx, rbx
+            lea     rdx, [rel g_readlen]
+            lea     r8, [rel g_fibuf]
+            call    [rbx + F_READ]
+            test    rax, rax
+            jnz     .fail
+            cmp     qword [rel g_readlen], 0
+            je      .fail                       ; the end, without finding it
+            lea     rsi, [rel s_lfn_name]
+            lea     rdi, [rel g_fibuf + FI_FILENAME]
+.char:
+            mov     ax, [rsi]
+            cmp     ax, [rdi]
+            jne     .entry
+            add     rsi, 2
+            add     rdi, 2
+            test    ax, ax
+            jnz     .char
+
+            lea     rdx, [rel s_lfn_ok]
+            call    out_w
+            jmp     .done
+.fail:
+            lea     rdx, [rel s_lfn_fail]
+            call    out_w
+            mov     eax, ebp
+            call    out_dec
+            lea     rdx, [rel s_crlf]
+            call    out_w
+.done:
+            add     rsp, 56
+            pop     rbp
+            pop     r13
+            pop     r12
+            pop     rdi
+            pop     rsi
+            pop     rbx
+            ret
+
+; ----------------------------------------------------------------------------
 ; smbios_string -- RSI = a structure, AL = a 1-based string number.
 ; Returns RSI = that string, or a pointer to an empty one if it is absent.
 ; ----------------------------------------------------------------------------
@@ -1634,6 +1741,7 @@ var_guid:                                   ; a GUID of this payload's own
 var_data:   db "asmfw keeps this in RAM"
 VAR_DATA_LEN equ $ - var_data
 var_tail:   db "!"
+lfn_text:   db "asmfw reads long names", 10
             align 8
 
 li_guid:                                    ; 5B1B31A1-9562-11D2-8E3F-00A0C969723B
@@ -1670,6 +1778,7 @@ g_smb_minor: dd 0
 g_strbuf:   times STRBUF_CHARS + 1 dw 0
             align 8
 g_vsize:    dq 0
+g_lfile:    dq 0
 g_li:       dq 0
 g_child:    dq 0
 g_child_li: dq 0
@@ -1686,6 +1795,8 @@ g_vattr:    dd 0, 0
 g_nguid:    times 16 db 0
 g_vbuf:     times VBUF_SIZE db 0
 g_nbuf:     times NBUF_SIZE db 0
+            align 8
+g_fibuf:    times FI_BUF_SIZE db 0
 s_empty_a:  dw 0                            ; read as a byte string; a word,
                                             ; so the CHAR16 strings after it
                                             ; stay 2-byte aligned, as UEFI
@@ -1708,6 +1819,11 @@ WSTR s_acpi_none, `  no ACPI configuration table on this firmware\r\n`
 WSTR s_crlf,     `\r\n`
 WSTR s_smb,      `  SMBIOS `
 WSTR s_var_name, `AsmfwPayloadTest`
+WSTR s_lfn_path,      `\\Long File Name Test.txt`
+WSTR s_lfn_path_case, `\\LONG file NAME test.TXT`
+WSTR s_lfn_name,      `Long File Name Test.txt`
+WSTR s_lfn_ok,   `  long names: opened \\Long File Name Test.txt, and again in other case, and the root lists it as itself\r\n`
+WSTR s_lfn_fail, `  long names: step `
 s_child_mark:   dw __utf16le__(`child`), 0
 CHILD_MARK_BYTES equ $ - s_child_mark
 WSTR s_child_says, `  a copy of me, started by its parent with load options; leaving through Exit()\r\n`

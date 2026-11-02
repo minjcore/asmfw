@@ -72,7 +72,13 @@ $(STAGE)/BOOTX64.EFI: payload/hello.asm | $(STAGE)
 # ---------------------------------------------------------------------------
 esp: $(ESP)
 
+# A file with a long name, so the payload can open it by that name and find
+# it listed as itself -- mtools writes the long-name entries a short name
+# could not hold.
+LFN_FILE := $(STAGE)/Long File Name Test.txt
+
 $(ESP): $(STAGE)/BOOTX64.EFI tools/mkesp.py | $(BUILD)
+	printf 'asmfw reads long names\n' > '$(LFN_FILE)'
 	$(PYTHON) tools/mkesp.py $@ $(STAGE) 64
 
 # ---------------------------------------------------------------------------

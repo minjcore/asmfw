@@ -1,5 +1,5 @@
 # const.inc
-[`src/const.inc`](../../../../src/const.inc) — 151 dòng, 0 entry point.
+[`src/const.inc`](../../../../src/const.inc) — 158 dòng, 0 entry point.
 
 Build-wide constants and the firmware's physical memory map.
 
@@ -7,7 +7,7 @@ Build-wide constants and the firmware's physical memory map.
 
 Macro: `GVAR`
 
-Hằng số: 34.
+Hằng số: 35.
 
 ---
 

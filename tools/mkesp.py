@@ -119,7 +119,7 @@ def main():
     # CMDLINE sits beside the image it is the command line for; anything else
     # without an extension -- an initrd, say -- goes in the root, where a path
     # like \INITRD on that command line finds it.
-    dest = {'.efi': '::/EFI/BOOT/', '.bin': '::/PROGS/', '': '::/'}
+    dest = {'.efi': '::/EFI/BOOT/', '.bin': '::/PROGS/', '': '::/', '.txt': '::/'}
     copied = 0
     for name in sorted(os.listdir(payload_dir)):
         if name == 'CMDLINE':

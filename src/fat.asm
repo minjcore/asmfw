@@ -1,9 +1,12 @@
 ; ============================================================================
 ; fat.asm -- enough FAT32 to find and read one file
 ;
-; Read-only, short names only. Long-name entries are skipped rather than
-; decoded: every path this firmware needs -- \EFI\BOOT\BOOTX64.EFI -- fits
-; 8.3 exactly, and a boot loader has no business writing to the volume.
+; Read-only. Long names are decoded, so a volume someone else made -- with a
+; \vmlinuz-linux on it, say -- can be opened by the names it shows. A long
+; name is a run of fragments stored before its short entry, last fragment
+; first, each carrying a checksum of the short name it belongs to; one whose
+; run is broken, or whose checksum does not match, is ignored, and the short
+; name stands alone, which is what the specification asks of a reader.
 ; ============================================================================
 
 bits 64
@@ -26,6 +29,18 @@ ATTR_DIRECTORY      equ 0x10
 ATTR_LFN            equ 0x0F
 
 FAT_EOC             equ 0x0FFFFFF8
+
+; A long-name fragment: 13 CHAR16 in three pieces around the short entry's
+; fields, so that a reader that knows nothing of them sees a volume label.
+LFN_ORD             equ 0x00                    ; sequence number, 0x40 = the last
+LFN_NAME1           equ 0x01                    ; 5 CHAR16
+LFN_CHECKSUM        equ 0x0D
+LFN_NAME2           equ 0x0E                    ; 6 CHAR16
+LFN_NAME3           equ 0x1C                    ; 2 CHAR16
+LFN_CHARS           equ 13
+LFN_LAST            equ 0x40
+LFN_SEQ_MASK        equ 0x1F
+LFN_MAX_FRAGMENTS   equ 20                      ; 260 characters, the VFAT limit
 
 ; ----------------------------------------------------------------------------
 ; fat_mount -- read the BPB of the partition at g_esp_lba and work out where
@@ -155,6 +170,23 @@ fat_next_clus:
     ret
 
 ; ----------------------------------------------------------------------------
+; fat_lookup_long -- find a path component by its long name or its short one.
+;
+;   EAX = first cluster of the directory
+;   RSI = the 11-byte short form of the component, as name_to_83 made it
+;   RDI = the component itself, CHAR16, ECX = its length in characters
+;
+; Returns as fat_lookup. The long name is compared without regard to case,
+; as FAT has always done.
+; ----------------------------------------------------------------------------
+fat_lookup_long:
+    mov     [abs g_want_long], rdi
+    mov     [abs g_want_len], ecx
+    call    fat_lookup.search
+    mov     qword [abs g_want_long], 0
+    ret
+
+; ----------------------------------------------------------------------------
 ; fat_lookup -- find an 8.3 name in a directory.
 ;
 ;   EAX = first cluster of the directory
@@ -164,6 +196,8 @@ fat_next_clus:
 ; bytes, CL = its attribute byte.
 ; ----------------------------------------------------------------------------
 fat_lookup:
+    mov     qword [abs g_want_long], 0
+.search:
     push    rbx
     push    rdi
     push    rsi
@@ -174,6 +208,7 @@ fat_lookup:
 
     mov     r10, rsi                            ; wanted name
     mov     r11d, eax                           ; current cluster
+    call    lfn_reset
 
 .cluster:
     cmp     r11d, 2
@@ -201,17 +236,29 @@ fat_lookup:
     test    al, al
     jz      .missing                            ; first free entry ends the directory
     cmp     al, 0xE5
-    je      .next_entry                         ; deleted
+    je      .deleted
     mov     al, [rbx + DIR_ATTR]
     and     al, ATTR_LFN
     cmp     al, ATTR_LFN
-    je      .next_entry                         ; long-name fragment
+    je      .fragment
+
+    ; A short entry, and perhaps the end of a long name.
+    call    lfn_owns
+    setz    r8b                                 ; the long name is this entry's
+    call    lfn_reset
 
     mov     rsi, r10
     mov     rdi, rbx
     mov     ecx, 11
     call    mem_cmp
+    je      .hit
+    test    r8b, r8b
+    jz      .next_entry
+    cmp     qword [abs g_want_long], 0
+    je      .next_entry
+    call    lfn_equals
     jne     .next_entry
+.hit:
 
     movzx   eax, word [rbx + DIR_CLUS_HI]
     shl     eax, 16
@@ -221,6 +268,11 @@ fat_lookup:
     mov     cl, [rbx + DIR_ATTR]
     jmp     .done
 
+.fragment:
+    call    lfn_feed
+    jmp     .next_entry
+.deleted:
+    call    lfn_reset
 .next_entry:
     add     rbx, DIR_ENTRY_SIZE
     dec     r9d
@@ -243,6 +295,173 @@ fat_lookup:
     pop     rsi
     pop     rdi
     pop     rbx
+    ret
+
+; ----------------------------------------------------------------------------
+; lfn_reset -- forget any long name being gathered.
+; ----------------------------------------------------------------------------
+lfn_reset:
+    mov     dword [abs g_lfn_next], 0
+    mov     dword [abs g_lfn_ok], 0
+    ret
+
+; ----------------------------------------------------------------------------
+; lfn_feed -- RBX = a long-name fragment. Adds its 13 characters to BUF_LFN
+; at the place its sequence number says, or abandons the name if the run is
+; broken. Fragments arrive last first, so the first one seen fixes the length.
+; ----------------------------------------------------------------------------
+lfn_feed:
+    push    rax
+    push    rcx
+    push    rsi
+    push    rdi
+    movzx   eax, byte [rbx + LFN_ORD]
+    test    al, LFN_LAST
+    jz      .continue
+    ; The start of a run: the last fragment, numbered with the count.
+    and     eax, LFN_SEQ_MASK
+    jz      .broken
+    cmp     eax, LFN_MAX_FRAGMENTS
+    ja      .broken
+    mov     [abs g_lfn_next], eax
+    movzx   ecx, byte [rbx + LFN_CHECKSUM]
+    mov     [abs g_lfn_csum], ecx
+    mov     dword [abs g_lfn_ok], 1
+    ; The name ends where the last fragment's characters end, at the latest.
+    imul    ecx, eax, LFN_CHARS * 2
+    mov     word [BUF_LFN + rcx], 0
+    jmp     .store
+.continue:
+    cmp     dword [abs g_lfn_ok], 0
+    je      .done
+    and     eax, LFN_SEQ_MASK
+    cmp     eax, [abs g_lfn_next]
+    jne     .broken
+    movzx   ecx, byte [rbx + LFN_CHECKSUM]
+    cmp     ecx, [abs g_lfn_csum]
+    jne     .broken
+.store:
+    ; Fragment N holds characters (N-1)*13 to N*13-1.
+    mov     eax, [abs g_lfn_next]
+    dec     eax
+    imul    eax, LFN_CHARS * 2
+    lea     rdi, [BUF_LFN + rax]
+    lea     rsi, [rbx + LFN_NAME1]
+    mov     ecx, 5 * 2
+    rep     movsb
+    lea     rsi, [rbx + LFN_NAME2]
+    mov     ecx, 6 * 2
+    rep     movsb
+    lea     rsi, [rbx + LFN_NAME3]
+    mov     ecx, 2 * 2
+    rep     movsb
+    dec     dword [abs g_lfn_next]
+    jmp     .done
+.broken:
+    call    lfn_reset
+.done:
+    pop     rdi
+    pop     rsi
+    pop     rcx
+    pop     rax
+    ret
+
+; ----------------------------------------------------------------------------
+; lfn_owns -- RBX = a short entry. ZF set if a complete long name was
+; gathered just before it and its checksum is this short name's.
+; ----------------------------------------------------------------------------
+lfn_owns:
+    push    rax
+    push    rcx
+    push    rsi
+    cmp     dword [abs g_lfn_ok], 0
+    je      .no
+    cmp     dword [abs g_lfn_next], 0
+    jne     .no                                 ; fragments missing
+    ; The VFAT checksum: rotate right one bit, add the next byte.
+    xor     eax, eax
+    mov     rsi, rbx
+    mov     ecx, 11
+.sum:
+    ror     al, 1
+    add     al, [rsi]
+    inc     rsi
+    dec     ecx
+    jnz     .sum
+    movzx   eax, al
+    cmp     eax, [abs g_lfn_csum]
+    jmp     .done
+.no:
+    or      eax, 1                              ; clears ZF
+.done:
+    pop     rsi
+    pop     rcx
+    pop     rax
+    ret
+
+; ----------------------------------------------------------------------------
+; lfn_equals -- ZF set if BUF_LFN is the component at g_want_long, of
+; g_want_len characters, ignoring the case of ASCII letters.
+; ----------------------------------------------------------------------------
+lfn_equals:
+    push    rax
+    push    rcx
+    push    rdx
+    push    rsi
+    push    rdi
+    mov     rsi, [abs g_want_long]
+    mov     rdi, BUF_LFN
+    mov     ecx, [abs g_want_len]
+.char:
+    test    ecx, ecx
+    jz      .end
+    movzx   eax, word [rsi]
+    movzx   edx, word [rdi]
+    call    lfn_upcase_pair
+    cmp     eax, edx
+    jne     .done
+    add     rsi, 2
+    add     rdi, 2
+    dec     ecx
+    jmp     .char
+.end:
+    cmp     word [rdi], 0                       ; and the long name ends there too
+.done:
+    pop     rdi
+    pop     rsi
+    pop     rdx
+    pop     rcx
+    pop     rax
+    ret
+
+; lfn_upcase_pair -- EAX and EDX = CHAR16 each, both folded to upper case.
+lfn_upcase_pair:
+    cmp     eax, 'a'
+    jb      .edx
+    cmp     eax, 'z'
+    ja      .edx
+    sub     eax, 'a' - 'A'
+.edx:
+    cmp     edx, 'a'
+    jb      .done
+    cmp     edx, 'z'
+    ja      .done
+    sub     edx, 'a' - 'A'
+.done:
+    ret
+
+; ----------------------------------------------------------------------------
+; lfn_length -- RAX = how many characters BUF_LFN holds before its NUL.
+; ----------------------------------------------------------------------------
+lfn_length:
+    xor     eax, eax
+.next:
+    cmp     word [BUF_LFN + rax*2], 0
+    je      .done
+    inc     eax
+    cmp     eax, LFN_MAX_FRAGMENTS * LFN_CHARS
+    jb      .next
+.done:
     ret
 
 ; ----------------------------------------------------------------------------
@@ -381,7 +600,9 @@ fat_seek:
 ; when the directory has fewer entries than that. The pointer is only valid
 ; until the next call, which is all any caller here needs.
 ;
-; Long-name fragments and deleted slots are skipped; "." and ".." are not,
+; Long-name fragments are gathered rather than counted: g_lfn_hit says whether
+; the entry returned has a long name, which is then in BUF_LFN. Deleted slots
+; are skipped; "." and ".." are not,
 ; because a FAT directory really does contain them and callers expect to see
 ; them listed.
 ; ----------------------------------------------------------------------------
@@ -397,6 +618,8 @@ fat_dir_nth:
 
     mov     r11d, eax                           ; current cluster
     mov     r10d, edx                           ; entries still to skip
+    call    lfn_reset
+    mov     dword [abs g_lfn_hit], 0
 
 .cluster:
     cmp     r11d, 2
@@ -420,15 +643,22 @@ fat_dir_nth:
     test    al, al
     jz      .missing                            ; end of the directory
     cmp     al, 0xE5
-    je      .next
+    je      .deleted
     mov     al, [rbx + DIR_ATTR]
     and     al, ATTR_LFN
     cmp     al, ATTR_LFN
-    je      .next
+    je      .fragment
 
     test    r10d, r10d
     jz      .found
     dec     r10d
+    call    lfn_reset
+    jmp     .next
+.fragment:
+    call    lfn_feed
+    jmp     .next
+.deleted:
+    call    lfn_reset
 .next:
     add     rbx, DIR_ENTRY_SIZE
     dec     r9d
@@ -440,6 +670,11 @@ fat_dir_nth:
     jmp     .cluster
 
 .found:
+    ; Whether BUF_LFN now holds this entry's long name.
+    call    lfn_owns
+    setz    al
+    movzx   eax, al
+    mov     [abs g_lfn_hit], eax
     mov     rax, rbx
     jmp     .done
 .missing:

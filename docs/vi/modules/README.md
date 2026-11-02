@@ -25,13 +25,13 @@ Firmware nằm trong flash ROM. Tường thuật: REFERENCE.md §3.
 | [ata.asm](src/ata.md) | 295 | 5 | ATA PIO on the primary channel |
 | [console.asm](src/console.md) | 277 | 6 | A text console painted directly into the framebuffer |
 | [efi_bs.asm](src/efi_bs.md) | 902 | 30 | Boot services |
-| [efi_file.asm](src/efi_file.md) | 938 | 19 | Simple File System and File protocols over the FAT32 reader |
+| [efi_file.asm](src/efi_file.md) | 955 | 19 | Simple File System and File protocols over the FAT32 reader |
 | [efi_image.asm](src/efi_image.md) | 274 | 6 | LoadImage, StartImage, UnloadImage, and where Exit returns |
 | [efi_proto.asm](src/efi_proto.md) | 783 | 20 | The protocols an image actually touches |
 | [efi_rt.asm](src/efi_rt.md) | 349 | 7 | Runtime services |
 | [efi_tables.asm](src/efi_tables.md) | 539 | 8 | Build the structures an EFI image is handed |
 | [efi_var.asm](src/efi_var.md) | 551 | 8 | UEFI variables, kept in RAM |
-| [fat.asm](src/fat.md) | 456 | 8 | Enough FAT32 to find and read one file |
+| [fat.asm](src/fat.md) | 691 | 15 | Enough FAT32 to find and read one file |
 | [fw.asm](src/fw.md) | 72 | 1 | The flash volume |
 | [gpt.asm](src/gpt.md) | 168 | 1 | Find the EFI system partition |
 | [init16.asm](src/init16.md) | 66 | 2 | SEC phase, part 1 |
@@ -45,7 +45,7 @@ Firmware nằm trong flash ROM. Tường thuật: REFERENCE.md §3.
 | [timer.asm](src/timer.md) | 109 | 2 | Delays, measured against the 8254 |
 | [util.asm](src/util.md) | 201 | 12 | Console output primitives and memory helpers |
 | [vbe.asm](src/vbe.md) | 219 | 4 | Bring up a linear framebuffer without a VGA option ROM |
-| [const.inc](src/const.md) | 151 | 0 | Build-wide constants and the firmware's physical memory map |
+| [const.inc](src/const.md) | 158 | 0 | Build-wide constants and the firmware's physical memory map |
 | [efi.inc](src/efi.md) | 350 | 0 | The UEFI ABI as this firmware implements it |
 | [font.inc](src/font.md) | 109 | 0 | The console font, one 8x16 cell per printable ASCII character |
 | [macros.inc](src/macros.md) | 31 | 0 | Small assembly conveniences |
@@ -92,7 +92,7 @@ Bốn program ring 3 và thư viện dùng chung. Tường thuật: REFERENCE.md
 
 | File | Dòng | Entry point | Nội dung |
 | --- | --- | --- | --- |
-| [hello.asm](payload/hello.md) | 1748 | 20 | A UEFI application, PE32+ headers and all, in one flat binary |
+| [hello.asm](payload/hello.md) | 1864 | 21 | A UEFI application, PE32+ headers and all, in one flat binary |
 
 ---
 

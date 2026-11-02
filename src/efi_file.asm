@@ -205,8 +205,11 @@ file_open:
 
     mov     eax, r14d
     push    rsi
+    push    rcx
+    mov     rdi, r13                            ; the component, for its long name
     mov     rsi, BUF_NAME83
-    call    fat_lookup
+    call    fat_lookup_long
+    pop     rsi                                 ; (the component's length, unused)
     pop     rsi
     test    eax, eax
     jz      .not_found
@@ -429,10 +432,24 @@ file_read:
     jz      .at_eof
     mov     rbx, rax                            ; -> the 32-byte entry
 
-    ; Work out how much room the entry needs, name included.
+    ; Work out how much room the entry needs, name included. The long name
+    ; when it has one, as every other firmware lists it.
+    cmp     dword [abs g_lfn_hit], 0
+    je      .short_name
+    call    lfn_length
+    mov     ecx, eax
+    mov     rsi, BUF_LFN
+    mov     rdi, BUF_NAME16
+    push    rcx
+    lea     rcx, [rcx * 2 + 2]
+    call    mem_copy
+    pop     rcx
+    jmp     .have_entry_name
+.short_name:
     mov     rsi, rbx
     mov     rdi, BUF_NAME16
     call    name_from_83                        ; ECX = characters written
+.have_entry_name:
     lea     rax, [rcx * 2 + 2]                  ; + the NUL
     add     rax, FI_HEADER_SIZE
     add     rax, 7

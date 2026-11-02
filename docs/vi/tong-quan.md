@@ -133,7 +133,7 @@ Phần này quan trọng, vì nó là thứ làm cho những phần còn lại �
   không cấp, firmware này thì không, nên ít hơn OVMF một structure.
 - **Không có `SetVirtualAddressMap`** — runtime services chỉ còn hợp lệ ở địa chỉ
   vật lý.
-- **FAT32 chỉ đọc, chỉ tên ngắn 8.3.**
+- **FAT32 chỉ đọc**; firmware đọc được tên dài, kernel thì chưa.
 - **`LoadImage` chỉ nạp từ buffer**, không từ device path; tối đa 8 image mỗi lần boot.
 - **Một ổ ATA duy nhất**, primary master, PIO, LBA28.
 - **Boot được Linux thật** (Alpine 6.18) tới userspace; giữ được runtime services (có `SetVirtualAddressMap`), đọc/ghi biến UEFI từ trong Linux.
